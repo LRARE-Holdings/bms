@@ -1,223 +1,310 @@
-You are building a complete membership management system and website for a Pilates studio called Burn Mat Studio. The domain is burnmatstudio.co.uk. The client is Lucy, a sole trader. This is a paid client project — production quality is required throughout.
+# CLAUDE.md — burn-public
 
-## Tech Stack
-- Next.js 16.2.0 (App Router, TypeScript, Tailwind CSS)
-- Supabase (PostgreSQL database, Auth, Row-Level Security)
-- Stripe (Checkout Sessions in payment mode, Webhooks, Customer Portal)
-- Resend (transactional email from burnmatstudio.co.uk)
-- Vercel (hosting, auto-deploy from GitHub)
+## What this project is
 
-## Brand System
-Exact colours sampled from logo files — use these as Tailwind CSS custom colours:
-- Wheat: #DFD0A5 (primary brand, logo beige fill)
-- Cocoa: #473728 (primary brand, logo brown fill)
-- Gold: #C4A95A (CTAs, active states, primary buttons)
-- Cream: #F5F0E8 (page background)
-- Sand: #E8DCC8 (borders, dividers, card borders)
-- Charcoal: #1A1A1A (footer, dark surfaces)
-- Slate: #4A4A4A (body text)
-- Warm Grey: #8A8070 (secondary text, captions)
-- Ember: #D4713A (live/active status, alerts, low availability)
-- Blush: #E8936A (soft highlights)
+The public-facing website and membership system for **Burn Mat Studio**, a Pilates and yoga studio owned by Lucy Healy, operating as a sole trader from TS16 0TA. This is the site visitors, members, and prospective clients interact with. Domain: **burnmatstudio.co.uk**
+
+Burn Mat Studio is **tenant #1** on the Forma platform. This codebase is designed to be cloned per studio — Studio #2 gets the same repo deployed at their own domain with a different `STUDIO_ID`. All studio-specific data comes from the database, keyed by `STUDIO_ID`. The only things that change per clone are env vars, domain, and brand assets.
+
+This is a paid client project — production quality is required throughout.
+
+## Tech stack
+
+- **Framework:** Next.js 16.2.0 (App Router, TypeScript, Tailwind CSS)
+- **Database & Auth:** Supabase (PostgreSQL, Auth, Row-Level Security)
+- **Payments:** Stripe (Checkout Sessions in payment mode, Webhooks, Customer Portal)
+- **Email:** Resend (transactional email from burnmatstudio.co.uk)
+- **Hosting:** Vercel (auto-deploy from GitHub)
+
+## What this app handles
+
+- Public marketing pages (homepage, classes, team, timetable, pricing, legal)
+- Class browsing and weekly timetable with live spot counts
+- Booking flow: browse → select class → Stripe Checkout or pack credit → booking confirmed
+- Class pack purchasing via Stripe
+- Member auth (signup/login), member dashboard (bookings, packs, profile)
+- Stripe webhook handler (confirms payments, creates bookings, issues pack credits)
+- Resend email triggers (booking confirmations, pack receipts, cancellations, welcome)
+- Staff view: filtered timetable with attendee lists (read-only)
+- Admin dashboard: class CRUD, schedule management, bookings, members, team, revenue
+
+## Brand system
+
+Exact colours sampled from logo files — configured as Tailwind custom colours:
+
+| Token | Hex | Usage |
+|---|---|---|
+| Wheat | `#DFD0A5` | Primary brand, logo beige fill |
+| Cocoa | `#473728` | Primary brand, logo brown fill |
+| Gold | `#C4A95A` | CTAs, active states, primary buttons |
+| Cream | `#F5F0E8` | Page background |
+| Sand | `#E8DCC8` | Borders, dividers, card borders |
+| Charcoal | `#1A1A1A` | Footer, dark surfaces |
+| Slate | `#4A4A4A` | Body text |
+| Warm Grey | `#8A8070` | Secondary text, captions |
+| Ember | `#D4713A` | Live/active status, alerts, low availability |
+| Blush | `#E8936A` | Soft highlights |
 
 Typography:
-- Display/headings: Cormorant Garamond (Google Fonts), fallback Georgia
-- Body/UI: DM Sans (Google Fonts), fallback system-ui
-- Accent labels: DM Sans uppercase, letter-spacing 0.1em+, gold on light backgrounds
+- **Display/headings:** Cormorant Garamond (Google Fonts), fallback Georgia
+- **Body/UI:** DM Sans (Google Fonts), fallback system-ui
+- **Accent labels:** DM Sans uppercase, letter-spacing 0.1em+, gold on light backgrounds
 
-The overall aesthetic is warm, earthy, premium but approachable. Generous whitespace. No harsh contrasts. Think boutique wellness, not corporate gym.
+Aesthetic: warm, earthy, premium but approachable. Generous whitespace. No harsh contrasts. Boutique wellness, not corporate gym.
 
-## Database Schema (Supabase)
+Logo is custom lettering (not a font). Use the PNG assets as images. Beige logo on dark backgrounds, brown logo on light backgrounds. Do not regenerate or alter.
 
-### profiles
-id (uuid PK, = auth.users.id), email (text), full_name (text), role (text enum: 'member'|'staff'|'admin'), created_at (timestamptz), updated_at (timestamptz)
+## Database schema (Supabase)
+
+Shared multi-tenant DB with RLS. Every query scoped by `studio_id`.
+
+### profiles (studio-agnostic)
+`id` (uuid PK, = auth.users.id), `email` (text), `full_name` (text), `avatar_url` (text nullable), `created_at`, `updated_at`
+
+This table has NO role or studio_id. It is a thin identity record — one row per human, shared across all studios. Roles are per-studio via studio_memberships.
+
+### studio_memberships
+`id` (uuid PK), `user_id` (uuid FK → profiles), `studio_id` (uuid FK → studios), `role` (enum: member | staff | admin), `created_at`
+
+**UNIQUE constraint on (user_id, studio_id)** — one role per user per studio.
+
+This is the multi-tenancy junction table. A single auth.users account can be a member at Burn, an instructor at Studio #2, or an admin at both. The current studio is resolved from the domain (or STUDIO_ID env var). All role checks query this table filtered by the current studio_id.
+
+### studios
+`id` (uuid PK), `name` (text), `slug` (text unique), `domain` (text), `email_from` (text, e.g. hello@burnmatstudio.co.uk), `email_domain` (text, e.g. burnmatstudio.co.uk), `branding` (jsonb — theme tokens, colours, fonts), `created_at`
+
+Platform-level table. One row per Forma tenant. Referenced by studio_memberships and all studio-scoped tables. Burn is row #1.
 
 ### classes
-id (uuid PK), name (text), slug (text unique), description (text), duration_mins (int), price_pence (int), image_url (text nullable), created_at (timestamptz)
+`id` (uuid PK), `studio_id` (uuid FK → studios), `name` (text), `slug` (text unique per studio), `description` (text), `duration_mins` (int), `price_pence` (int), `image_url` (text nullable), `created_at`
 
 Seed data (price in pence):
-- Hot Pilates, hot-pilates, 45 min, 1550
-- Hot Yoga, hot-yoga, 60 min, 1200
-- Pilates Sculpt, pilates-sculpt, 45 min, 1200
-- Cardio Pilates, cardio-pilates, 45 min, 850
-- Beginners Pilates, beginners-pilates, 45 min, 1000
-- Baby & Me Yoga, baby-me-yoga, 60 min, 850
+
+| Class | Slug | Duration | Price |
+|---|---|---|---|
+| Hot Pilates | hot-pilates | 45 min | 1550 |
+| Hot Yoga | hot-yoga | 60 min | 1200 |
+| Pilates Sculpt | pilates-sculpt | 45 min | 1200 |
+| Cardio Pilates | cardio-pilates | 45 min | 850 |
+| Beginners Pilates | beginners-pilates | 45 min | 1000 |
+| Baby & Me Yoga | baby-me-yoga | 60 min | 850 |
 
 ### instructors
-id (uuid PK), name (text), slug (text unique), bio (text), photo_url (text nullable), user_id (uuid FK to profiles, nullable — links to auth for staff login), created_at (timestamptz)
+`id` (uuid PK), `studio_id` (uuid FK → studios), `name` (text), `slug` (text unique per studio), `bio` (text), `photo_url` (text nullable), `user_id` (uuid FK → profiles, nullable), `created_at`
 
 Seed data:
-- Lucy (slug: lucy) — Founder & Lead Instructor. Bio TBC.
-- Amelia Bennett (slug: amelia) — Fully qualified Pilates instructor. Trained in dance, graduated with a First in Performing Arts from Wilkes Academy. Qualified in Mat and Reformer Pilates April 2025. Known for creative flows and building personal connections with clients.
-- Takkiya Mastoor (slug: takkiya, Instagram: @pilateswithtak) — Accredited Mat Pilates instructor and registered Dietitian specialising in renal. 3+ years as a Dietitian across mental health, private 1:1, and weight management.
+- **Lucy** (slug: lucy) — Founder & Lead Instructor. Bio TBC.
+- **Amelia Bennett** (slug: amelia) — Fully qualified Pilates instructor. Trained in dance, graduated with a First in Performing Arts from Wilkes Academy. Qualified in Mat and Reformer Pilates April 2025. Known for creative flows and building personal connections.
+- **Takkiya Mastoor** (slug: takkiya, IG: @pilateswithtak) — Accredited Mat Pilates instructor and registered Dietitian specialising in renal. 3+ years across mental health, private 1:1, and weight management.
 
 ### schedule
-id (uuid PK), class_id (uuid FK), instructor_id (uuid FK), day_of_week (int, 0=Mon to 6=Sun), start_time (time), end_time (time), is_active (bool default true), created_at (timestamptz)
+`id` (uuid PK), `studio_id` (uuid FK → studios), `class_id` (uuid FK), `instructor_id` (uuid FK), `day_of_week` (int, 0=Mon to 6=Sun), `start_time` (time), `end_time` (time), `is_active` (bool default true), `created_at`
 
-The timetable is static weekly — same schedule repeats. Lucy edits it occasionally at the start of each month. Seed with placeholder slots across the week for now (we're awaiting the real timetable from Lucy).
+Static weekly template — same schedule repeats. Lucy edits at start of each month. Seed with placeholder slots (awaiting real timetable from Lucy).
 
 ### bookings
-id (uuid PK), schedule_id (uuid FK), user_id (uuid FK to profiles), date (date — the specific occurrence), status (text enum: 'confirmed'|'cancelled'), payment_method (text enum: 'stripe'|'pack_credit'), stripe_session_id (text nullable), created_at (timestamptz)
+`id` (uuid PK), `studio_id` (uuid FK → studios), `schedule_id` (uuid FK), `user_id` (uuid FK → profiles), `date` (date — the specific occurrence), `status` (enum: confirmed | cancelled), `payment_method` (enum: stripe | pack_credit), `stripe_session_id` (text nullable), `created_at`
 
-UNIQUE constraint on (schedule_id, user_id, date) to prevent double-booking.
+**UNIQUE constraint on (schedule_id, user_id, date)** — prevents double-booking.
 
 ### class_packs
-id (uuid PK), user_id (uuid FK to profiles), pack_type (text enum: '5'|'10'), credits_total (int), credits_remaining (int), purchased_at (timestamptz), expires_at (timestamptz), stripe_session_id (text), created_at (timestamptz)
+`id` (uuid PK), `studio_id` (uuid FK → studios), `user_id` (uuid FK → profiles), `pack_type` (enum: 5 | 10), `credits_total` (int), `credits_remaining` (int), `purchased_at` (timestamptz), `expires_at` (timestamptz), `stripe_session_id` (text), `created_at`
 
-5-pack: £37.50, expires 4 weeks from purchase. 10-pack: £75.00, expires 6 weeks from purchase.
+- 5-pack: £37.50, expires 4 weeks from purchase
+- 10-pack: £75.00, expires 6 weeks from purchase
 
 ### Row-Level Security
-- Public (anon): SELECT on classes, instructors, schedule
-- Members: SELECT/INSERT on bookings WHERE user_id = auth.uid(). SELECT on class_packs WHERE user_id = auth.uid(). SELECT/UPDATE on profiles WHERE id = auth.uid()
-- Staff: same as member, PLUS SELECT on bookings WHERE schedule_id IN (SELECT id FROM schedule WHERE instructor_id IN (SELECT id FROM instructors WHERE user_id = auth.uid()))
-- Admin (role = 'admin'): full SELECT/INSERT/UPDATE/DELETE on all tables
+
+All studio-scoped tables (classes, instructors, schedule, bookings, class_packs) have a `studio_id` column. RLS policies use `studio_memberships` to determine access.
+
+Helper function (reusable in policies):
+```sql
+get_user_role(p_studio_id uuid) RETURNS text
+-- Returns the user's role at the given studio, or NULL if no membership
+SELECT role FROM studio_memberships WHERE user_id = auth.uid() AND studio_id = p_studio_id
+```
+
+- **Public (anon):** SELECT on classes, instructors, schedule (filtered by studio_id — resolved from app context, not from auth)
+- **Members:** Must have a studio_memberships row for the studio. SELECT/INSERT on bookings WHERE user_id = auth.uid() AND studio_id matches. SELECT on class_packs WHERE user_id = auth.uid() AND studio_id matches. SELECT/UPDATE on profiles WHERE id = auth.uid() (profiles is studio-agnostic, no studio_id filter needed)
+- **Staff:** Member permissions PLUS SELECT on bookings WHERE studio_id matches AND schedule_id IN (schedules assigned to their instructor record at this studio)
+- **Admin (role = admin at this studio):** Full SELECT/INSERT/UPDATE/DELETE on all tables WHERE studio_id matches
+- **studio_memberships itself:** Users can SELECT their own rows. Admins can SELECT/INSERT/UPDATE/DELETE for their studio.
 
 ## Auth
-Supabase Auth with email/password. On sign-up, create a profiles row with role = 'member' via a database trigger or post-signup hook. Staff accounts created manually by admin with role = 'staff'. One admin account for Lucy with role = 'admin'.
+
+Supabase Auth with email/password (magic link sign-in planned as a future addition). Single auth pool shared across all Forma tenants.
+
+**Sign-up flow:**
+1. User signs up on burnmatstudio.co.uk (or any studio domain)
+2. Supabase creates `auth.users` row
+3. Database trigger creates `profiles` row (studio-agnostic — just name + email)
+4. The studio-specific signup page creates a `studio_memberships` row linking the user to the current studio with role = member
+
+**Staff/admin accounts:** Created by the studio admin via the dashboard. The admin creates the Supabase Auth account (or invites via email), then creates a `studio_memberships` row with role = staff or admin.
+
+**Role resolution at runtime:** Middleware reads the user's role from `studio_memberships` filtered by the current `STUDIO_ID`. A user could be admin at Burn and member at Studio #2 — the role depends on which domain they're on.
 
 Middleware protects routes:
-- /account/* — requires auth, role = member (or any authenticated)
-- /staff/* — requires auth, role = staff
-- /dashboard/* — requires auth, role = admin
+- `/account/*` — requires auth + membership at current studio (any role)
+- `/staff/*` — requires auth + role = staff or admin at current studio
+- `/dashboard/*` — requires auth + role = admin at current studio
 
-Role-based redirect after login: admin → /dashboard, staff → /staff, member → /account
+Role-based redirect after login: admin → /dashboard, staff → /staff, member → /account.
 
-## Public Pages (no auth required)
+**Cross-studio identity:** A user who already has an auth account (e.g. a Burn member) and signs up at Studio #2 doesn't create a new account — they get a new `studio_memberships` row. One login, multiple studios. For Burn as tenant #1, users will never see this complexity.
 
-### / (Homepage)
-Full-viewport hero section with dark background (cocoa), logo (beige variant), headline "Move, breathe, burn.", tagline "Pilates · Yoga · Heat · Sculpt", and gold CTA button "Book a class" linking to /timetable. Below: about preview section (split layout — photo placeholder left, text + stats right: 6 class types, 10 max per class, 3 instructors). Class highlights grid. Final CTA banner.
+## Email strategy (Resend)
 
-### /classes
-6 class cards in a responsive grid (3-col desktop, 2-col tablet, 1-col mobile). Each card has: photo placeholder area with subtle gradient background per class type, price badge (cocoa pill, top-right), class name (Cormorant Garamond), duration label (gold uppercase), description paragraph. All data from the classes table.
+Single Resend account for all of Forma, with multiple verified sending domains.
 
-### /team
-3 instructor cards. Each has: photo placeholder, name (Cormorant Garamond), role label (gold uppercase), bio paragraph, class tags (small pills showing which classes they teach). Responsive grid.
+**Transactional emails** (booking confirmations, pack receipts, cancellations, welcome): Sent via Resend from the studio's own domain. The `studios` table stores `email_from` and `email_domain` per tenant. API routes look up the current studio's sending config and pass it to Resend. Burn emails come from hello@burnmatstudio.co.uk.
 
-### /timetable
-This is the core page. Weekly timetable fetched from schedule table joined to classes and instructors.
+**Auth emails** (confirmation links, password resets, magic links): Supabase sends these itself using a project-wide SMTP sender. Configured as auth@useforma.co.uk (Forma-branded). This is acceptable for launch — auth emails are functional, not brand-critical. When the Partner tier (white-label) launches, these can be moved to custom per-studio sending by disabling Supabase's built-in auth emails and handling them via Resend + edge functions.
 
-UI: Week header showing date range with prev/next navigation. Day tabs (Mon–Sun) — clicking a tab shows that day's classes. Each slot shows: time, duration, colour-coded bar (Ember for hot classes, Gold for sculpt, Blush for cardio, Sand for beginners, Cocoa for baby & me), class name, instructor name, price, spots remaining (10 minus confirmed bookings for that specific date), and a Book button.
-
-Book button behaviour:
-- If spots = 0: disabled, shows "Full"
-- If user not logged in: clicking opens a prompt to log in or sign up
-- If user logged in with valid pack credits: opens modal confirming "1 credit will be used", user confirms, booking created via /api/bookings/create, credit deducted, confirmation email sent
-- If user logged in without credits: opens modal showing drop-in price, user clicks "Pay with Stripe", redirects to Stripe Checkout via /api/checkout/session
-
-### /pricing
-Left column: pricing table listing all 6 classes with name, duration, and drop-in price. Right column: two class pack cards stacked. Top card (cocoa background, wheat text): 10 Class Pack, £75, £7.50/class, use within 6 weeks, "Best value" badge. Bottom card (white, bordered): 5 Class Pack, £37.50, £7.50/class, use within 4 weeks. Each has a buy button linking to /api/checkout/pack.
-
-### /privacy, /terms, /cookies
-Legal pages. Draft reasonable content covering: data collected (name, email, booking history), purpose (processing bookings, sending confirmations), third parties (Stripe for payments, Resend for email, Supabase for storage), data retention, data subject rights, contact details. Terms covering booking contract, cancellation policy, pack terms, liability. Cookie policy covering session cookies. Lucy is the data controller as a sole trader.
-
-## Member Pages (auth required, role = member)
-
-### /account
-Dashboard showing: upcoming bookings (with cancel button), past bookings, class pack balance (credits remaining, expiry date, or "No active pack" with link to buy one), and a link to Stripe Customer Portal for payment management.
-
-### /account/profile
-Edit name and email.
-
-## Staff Pages (auth required, role = staff)
-
-### /staff
-Filtered timetable showing only classes where the logged-in user is the assigned instructor. For each of their upcoming classes: date, time, class name, and an expandable attendee list showing booked member names and emails. Read-only — no edit capabilities.
-
-## Admin Pages (auth required, role = admin)
-
-### /dashboard
-Overview: today's classes with booking counts, quick stats (total members, bookings this week, revenue this month via Stripe).
-
-### /dashboard/classes
-CRUD for class types. List all classes, add new, edit existing (name, description, duration, price, photo), delete.
-
-### /dashboard/timetable
-Visual weekly grid. Add/edit/remove schedule slots. Assign instructor to each slot. Ability to duplicate the current week template.
-
-### /dashboard/bookings
-View bookings by day or week. Click into a slot to see the attendee list. Cancel a booking on behalf of a member.
-
-### /dashboard/members
-List all members with search/filter. Click into a member to see their profile, booking history, and pack credit balance.
-
-### /dashboard/team
-List instructors. Add/edit instructor (name, bio, photo). Create a Supabase Auth account for a new instructor and set their role to 'staff'.
-
-## API Routes
-
-### POST /api/checkout/session
-Creates a Stripe Checkout Session in payment mode for a drop-in class booking. Receives: schedule_id, date. Looks up the class to get the correct Stripe Price. Passes metadata: { schedule_id, date, user_id }. Returns the checkout session URL.
-
-### POST /api/checkout/pack
-Creates a Stripe Checkout Session for a class pack. Receives: pack_type ('5' or '10'). Uses the correct Stripe Price (£37.50 or £75.00). Passes metadata: { pack_type, user_id }. Returns the checkout session URL.
-
-### POST /api/webhooks/stripe
-Handles Stripe webhook events. Verify signature with webhook secret. On checkout.session.completed:
-- If metadata contains schedule_id → it's a drop-in booking. Create booking row in Supabase (status: confirmed, payment_method: stripe, stripe_session_id). Send booking confirmation email via Resend.
-- If metadata contains pack_type → it's a pack purchase. Create class_packs row with correct credits_total, credits_remaining, and expires_at (4 weeks for 5-pack, 6 weeks for 10-pack). Send pack confirmation email via Resend.
-- Idempotency: check if a booking/pack already exists for this stripe_session_id before writing.
-
-### POST /api/bookings/create
-For pack credit bookings (no Stripe involved). Receives: schedule_id, date. Checks user has valid non-expired pack with credits_remaining > 0. Checks class is not full (bookings count < 10). Checks no duplicate booking. Decrements credits_remaining by 1. Creates booking row (payment_method: pack_credit). Sends confirmation email. Returns success.
-
-### POST /api/bookings/cancel
-Receives: booking_id. Sets booking status to 'cancelled'. If payment_method was pack_credit, increment the pack's credits_remaining by 1. If payment_method was stripe, no automatic refund (refund policy TBC). Sends cancellation email.
-
-### GET /api/timetable
-Receives: week_start (date). Returns schedule slots for that week with booking counts per slot per date, joined with class and instructor data. Used by the timetable page to show spots remaining.
-
-## Email (Resend)
-Domain: burnmatstudio.co.uk. From address: hello@burnmatstudio.co.uk.
-Build emails as React Email components with the brand palette (cocoa header with wheat logo, cream body, gold CTA buttons, charcoal footer).
+React Email components with brand palette (cocoa header + wheat logo, cream body, gold CTA buttons, charcoal footer).
 
 Templates:
-- Booking confirmation: class name, date, time, instructor, "See you on the mat."
-- Pack purchase confirmation: pack type, credits, expiry date
-- Booking cancellation: confirmation of cancellation, credit refunded note if applicable
-- Welcome email: sent on sign-up
+- **Booking confirmation:** class name, date, time, instructor. "See you on the mat."
+- **Pack purchase confirmation:** pack type, credits, expiry date
+- **Booking cancellation:** confirmation + credit refunded note if applicable
+- **Welcome:** sent on sign-up (from the studio domain, not the Forma auth domain)
 
-## Stripe Products to Create
-8 products total, all one-time payment mode:
-1. Hot Pilates — £15.50 (metadata: class_slug: hot-pilates)
-2. Hot Yoga — £12.00 (metadata: class_slug: hot-yoga)
-3. Pilates Sculpt — £12.00 (metadata: class_slug: pilates-sculpt)
-4. Cardio Pilates — £8.50 (metadata: class_slug: cardio-pilates)
-5. Beginners Pilates — £10.00 (metadata: class_slug: beginners-pilates)
-6. Baby & Me Yoga — £8.50 (metadata: class_slug: baby-me-yoga)
-7. 5 Class Pack — £37.50 (metadata: pack_type: 5)
-8. 10 Class Pack — £75.00 (metadata: pack_type: 10)
+## Pages
 
-Enable Stripe Customer Portal for payment method management.
+### Public (no auth)
 
-## Build Order
-1. Scaffold Next.js project with Tailwind config using the brand colours and fonts
-2. Create Supabase migration with all tables, RLS policies, and seed data
-3. Set up Supabase Auth with profiles trigger
-4. Build public layout (nav with brown logo, footer with beige logo, cream background)
-5. Build homepage
-6. Build /classes page
-7. Build /team page
-8. Build /timetable page (read-only first — just display the schedule with spot counts)
-9. Build /pricing page
-10. Set up Stripe products and API route for checkout sessions
-11. Set up Stripe webhook handler
-12. Add booking flow to timetable (drop-in Stripe checkout)
-13. Add class pack purchase flow
-14. Add pack credit booking flow (deduct credit, no Stripe)
-15. Build auth pages (login, signup)
-16. Build member account pages (/account, /account/profile)
-17. Build staff view (/staff)
-18. Build admin dashboard (/dashboard and all sub-pages)
-19. Build Resend email templates and integrate
-20. Build legal pages (/privacy, /terms, /cookies) with consent checkbox on booking
+**`/` (Homepage):** Full-viewport hero (cocoa bg, beige logo, headline "Move, breathe, burn.", tagline "Pilates · Yoga · Heat · Sculpt", gold CTA → /timetable). About preview section (photo placeholder + stats: 6 class types, 10 max per class, 3 instructors). Class highlights grid. Final CTA banner.
+
+**`/classes`:** 6 class cards, responsive grid (3/2/1 col). Each: photo placeholder with gradient bg, price badge (cocoa pill), class name (Cormorant Garamond), duration label (gold uppercase), description. Data from classes table.
+
+**`/team`:** 3 instructor cards. Photo placeholder, name, role label (gold uppercase), bio, class tags (pills). Responsive grid.
+
+**`/timetable` (core page):** Weekly timetable from schedule joined to classes + instructors. Week header with date range and prev/next nav. Day tabs (Mon–Sun). Each slot: time, duration, colour-coded bar (Ember = hot classes, Gold = sculpt, Blush = cardio, Sand = beginners, Cocoa = baby & me), class name, instructor, price, spots remaining (10 minus confirmed bookings for that date), Book button.
+
+Book button logic:
+- Spots = 0 → disabled, shows "Full"
+- Not logged in → prompt to log in / sign up
+- Logged in with valid pack credits → modal: "1 credit will be used", confirm → POST /api/bookings/create, credit deducted, email sent
+- Logged in without credits → modal: drop-in price, "Pay with Stripe" → redirect to Stripe Checkout via /api/checkout/session
+
+**`/pricing`:** Left: pricing table (all 6 classes, name, duration, drop-in price). Right: two stacked pack cards. Top (cocoa bg, wheat text): 10 Class Pack, £75, £7.50/class, 6 weeks, "Best value" badge. Bottom (white, bordered): 5 Class Pack, £37.50, £7.50/class, 4 weeks. Buy buttons → /api/checkout/pack.
+
+**`/privacy`, `/terms`, `/cookies`:** Legal pages covering data collected, purpose, third parties (Stripe, Resend, Supabase), retention, subject rights, booking terms, cancellation, pack terms, liability, session cookies. Lucy is data controller as sole trader.
+
+### Member (auth required)
+
+**`/account`:** Upcoming bookings (with cancel), past bookings, pack balance (credits remaining + expiry, or "No active pack" + buy link), link to Stripe Customer Portal.
+
+**`/account/profile`:** Edit name and email.
+
+### Staff (auth required, role = staff)
+
+**`/staff`:** Filtered timetable — only classes where logged-in user is the assigned instructor. Each upcoming class: date, time, class name, expandable attendee list (names + emails). Read-only.
+
+### Admin (auth required, role = admin)
+
+**`/dashboard`:** Today's classes with booking counts, quick stats (total members, bookings this week, revenue this month).
+
+**`/dashboard/classes`:** CRUD for class types. List, add, edit (name, description, duration, price, photo), delete.
+
+**`/dashboard/timetable`:** Visual weekly grid. Add/edit/remove slots. Assign instructor. Duplicate week template.
+
+**`/dashboard/bookings`:** View by day/week. Click slot → attendee list. Cancel booking on behalf of member.
+
+**`/dashboard/members`:** List all members with search/filter. Click → profile, booking history, pack balance.
+
+**`/dashboard/team`:** List instructors. Add/edit (name, bio, photo). Create a Supabase Auth account for a new instructor and create a `studio_memberships` row with role = staff.
+
+## API routes
+
+**POST `/api/checkout/session`** — Creates Stripe Checkout Session for drop-in booking. Receives: schedule_id, date. Looks up class for correct price. Metadata: { schedule_id, date, user_id }. Returns checkout URL.
+
+**POST `/api/checkout/pack`** — Creates Stripe Checkout Session for pack purchase. Receives: pack_type (5 | 10). Metadata: { pack_type, user_id }. Returns checkout URL.
+
+**POST `/api/webhooks/stripe`** — Handles Stripe webhooks. Verify signature. On checkout.session.completed:
+- Metadata has schedule_id → drop-in booking. Create booking row (confirmed, stripe, session_id). Send confirmation email.
+- Metadata has pack_type → pack purchase. Create class_packs row (correct credits, expiry). Send confirmation email.
+- **Idempotency:** check if booking/pack already exists for this stripe_session_id before writing.
+
+**POST `/api/bookings/create`** — Pack credit booking (no Stripe). Receives: schedule_id, date. Validates: user has valid non-expired pack with credits > 0, class not full (< 10 confirmed bookings), no duplicate booking. Decrements credits_remaining. Creates booking (pack_credit). Sends email.
+
+**POST `/api/bookings/cancel`** — Receives: booking_id. Sets status = cancelled. If pack_credit → re-increment credits_remaining. If stripe → no auto refund (policy TBC). Sends cancellation email.
+
+**GET `/api/timetable`** — Receives: week_start (date). Returns schedule slots for that week with booking counts per slot/date, joined with class + instructor data. Powers the spots-remaining display.
+
+## Stripe products (8 total, all one-time payment mode)
+
+| Product | Price | Metadata |
+|---|---|---|
+| Hot Pilates | £15.50 | class_slug: hot-pilates |
+| Hot Yoga | £12.00 | class_slug: hot-yoga |
+| Pilates Sculpt | £12.00 | class_slug: pilates-sculpt |
+| Cardio Pilates | £8.50 | class_slug: cardio-pilates |
+| Beginners Pilates | £10.00 | class_slug: beginners-pilates |
+| Baby & Me Yoga | £8.50 | class_slug: baby-me-yoga |
+| 5 Class Pack | £37.50 | pack_type: 5 |
+| 10 Class Pack | £75.00 | pack_type: 10 |
+
+Stripe Customer Portal enabled for payment method management.
+
+## Environment variables
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+RESEND_API_KEY=
+NEXT_PUBLIC_STUDIO_ID=
+```
+
+## Build order
+
+1. Scaffold Next.js with Tailwind config (brand colours + fonts)
+2. Supabase migration: all tables, RLS, seed data
+3. Supabase Auth with profiles trigger
+4. Public layout (nav with brown logo, footer with beige logo, cream bg)
+5. Homepage
+6. /classes
+7. /team
+8. /timetable (read-only first — display schedule + spot counts)
+9. /pricing
+10. Stripe products + checkout session API route
+11. Stripe webhook handler
+12. Booking flow on timetable (drop-in Stripe checkout)
+13. Class pack purchase flow
+14. Pack credit booking flow (deduct credit, no Stripe)
+15. Auth pages (login, signup)
+16. Member account pages (/account, /account/profile)
+17. Staff view (/staff)
+18. Admin dashboard (/dashboard + all sub-pages)
+19. Resend email templates + integration
+20. Legal pages (/privacy, /terms, /cookies)
 21. Testing and polish
 22. Deploy to Vercel, configure DNS, switch Stripe to live
 
-## Important Notes
-- All prices stored in pence in the database to avoid floating-point issues. Convert to pounds for display (price_pence / 100).
-- The timetable is a static weekly template. Bookings reference a schedule slot + a specific date. Spots remaining = 10 - COUNT(bookings WHERE schedule_id = X AND date = Y AND status = 'confirmed').
-- Class packs are a credit system, not Stripe subscriptions. No recurring billing.
-- Lucy is not technical. The admin dashboard must be intuitive — clear labels, confirmation dialogs before destructive actions, no jargon.
-- Three user roles sharing one auth system. Middleware and RLS enforce access, not just UI hiding.
-- The logo is custom lettering (not a font). Use the PNG assets as images. Beige logo on dark backgrounds, brown logo on light backgrounds.
-- Mobile-first responsive design. Many members will book from their phones.
+## Conventions
+
+- App Router file structure: `app/(public)/`, `app/(member)/`, `app/(staff)/`, `app/(admin)/`, `app/api/`
+- Server Components by default; `"use client"` only when needed for interactivity
+- All DB queries via Supabase client with RLS — never bypass with service role unless in API routes/webhooks
+- Tailwind CSS with brand tokens as custom colours
+- Components in `components/` with feature subdirectories (e.g. `components/booking/`, `components/timetable/`, `components/dashboard/`)
+- API routes in `app/api/` for Stripe sessions, webhooks, server-side mutations
+- Shared utilities in `lib/`: `lib/supabase.ts`, `lib/stripe.ts`, `lib/resend.ts`, `lib/auth.ts` (helper to resolve current user's role at current studio)
+- All prices stored in pence in the database. Convert to pounds for display (`price_pence / 100`).
+- Mobile-first responsive design. Many members book from their phones.
+
+## Key rules
+
+1. **Always scope queries by `studio_id`** — never fetch unscoped data.
+2. **Webhook-driven payments** — bookings and pack credits only confirmed after Stripe webhook, never optimistically on the client.
+3. **Double-booking prevention** — relies on the UNIQUE constraint on (schedule_id, user_id, date). Do not circumvent.
+4. **Pack expiry enforced at query time** — always check validity before allowing a credit booking.
+5. **Spots remaining = 10 - COUNT(confirmed bookings for that slot + date).** All classes capped at 10.
+6. **Credits not cash** — class packs grant credits. No partial refunds on packs.
+7. **Payment mode only** — Stripe Checkout Sessions in payment mode. No subscriptions. No Stripe Connect (that's a Forma platform concern, not a per-studio concern).
+8. **Idempotent webhooks** — always check if a record already exists for a stripe_session_id before writing.
+9. **Roles are per-studio, not per-user** — a user's role comes from `studio_memberships` filtered by the current `STUDIO_ID`. Middleware AND RLS enforce access. Not just UI hiding.
