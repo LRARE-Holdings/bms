@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function AccountPage() {
   return (
-    <section className="py-10 px-5 md:px-10 max-w-[1100px]">
+    <section className="py-10 px-5 md:px-10 max-w-275">
       <AccountHeader
         eyebrow="Book a class"
         title="Class timetable"

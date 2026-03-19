@@ -4,7 +4,7 @@ import Image from "next/image";
 export default function Footer() {
   return (
     <footer className="bg-charcoal pt-12 pb-6 px-5 md:px-8">
-      <div className="max-w-[1100px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-8">
+      <div className="max-w-275 mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-8">
         {/* Brand column */}
         <div>
           <Image
@@ -17,7 +17,7 @@ export default function Footer() {
           <div className="font-display text-xl font-semibold text-wheat mb-1.5">
             Burn Mat Studio
           </div>
-          <p className="text-[0.78rem] text-warm-grey leading-relaxed max-w-[250px]">
+          <p className="text-[0.78rem] text-warm-grey leading-relaxed max-w-62.5">
             Boutique Pilates &amp; yoga in Stockton-on-Tees. Small classes, big
             results. Move, breathe, burn.
           </p>
@@ -108,7 +108,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="max-w-[1100px] mx-auto mt-6 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row justify-between gap-2 text-[0.7rem] text-warm-grey">
+      <div className="max-w-275 mx-auto mt-6 pt-5 border-t border-white/6 flex flex-col sm:flex-row justify-between gap-2 text-[0.7rem] text-warm-grey">
         <span>&copy; {new Date().getFullYear()} Burn Mat Studio. All rights reserved.</span>
         <div className="flex gap-3">
           <Link href="/privacy" className="hover:text-gold transition-colors">
@@ -126,7 +126,7 @@ export default function Footer() {
       </div>
 
       {/* Powered by */}
-      <div className="max-w-[1100px] mx-auto mt-4 text-center text-[0.62rem] text-warm-grey/60">
+      <div className="max-w-275 mx-auto mt-4 text-center text-[0.62rem] text-warm-grey/60">
         Powered by{" "}
         <a
           href="https://www.useforma.co.uk"
