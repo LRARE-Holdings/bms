@@ -20,10 +20,18 @@ export function getStorageUrl(bucket: string, path: string): string {
 /**
  * Convenience helper for instructor photos.
  * Returns the public URL if a photo_url is set, otherwise null.
+ *
+ * Handles two formats:
+ *  - Full URL (already a complete Supabase storage URL) → returned as-is
+ *  - Bare filename (e.g. "lucy.png") → prefixed with the storage bucket URL
  */
 export function getInstructorPhotoUrl(
   photoUrl: string | null
 ): string | null {
   if (!photoUrl) return null;
+  // If the value is already a full URL, return it directly
+  if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+    return photoUrl;
+  }
   return getStorageUrl("instructors", photoUrl);
 }
