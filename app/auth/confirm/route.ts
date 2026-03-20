@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWelcomeEmail } from "@/lib/email/send";
+import { getStudioId } from "@/lib/studio-context";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 /**
@@ -10,6 +13,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
  * arrives with token_hash, type, and next query params.
  *
  * This route calls verifyOtp() to exchange the token for a session,
+ * ensures a studio membership exists (critical for new signups),
  * then redirects to the `next` path (e.g. /reset-password, /account).
  */
 export async function GET(request: NextRequest) {
@@ -34,6 +38,35 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
+      // Ensure studio membership exists — handles the signup confirmation
+      // flow where the user verified their email and now has a session
+      // but hasn't been linked to this studio yet.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const studioId = await getStudioId();
+        const adminClient = createAdminClient();
+
+        const { data: existing } = await adminClient
+          .from("studio_memberships")
+          .select("id")
+          .eq("profile_id", user.id)
+          .eq("studio_id", studioId)
+          .single();
+
+        if (!existing) {
+          await adminClient.from("studio_memberships").insert({
+            studio_id: studioId,
+            profile_id: user.id,
+            role: "member",
+          });
+
+          sendWelcomeEmail({ profileId: user.id, studioId });
+        }
+      }
+
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

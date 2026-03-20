@@ -31,6 +31,11 @@ export default function LoginForm({ studioId }: { studioId: string }) {
       return;
     }
 
+    // Ensure studio membership exists — catches users who signed up
+    // before membership creation was reliable, or who were created
+    // via Supabase dashboard without a membership row.
+    await fetch("/api/auth/ensure-membership", { method: "POST" });
+
     // Check role for redirect
     const {
       data: { user },

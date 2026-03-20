@@ -21,11 +21,13 @@ export default function SignupForm() {
     setError("");
     setLoading(true);
 
+    const studioId = process.env.NEXT_PUBLIC_STUDIO_ID;
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: { full_name: fullName, ...(studioId && { studio_id: studioId }) },
       },
     });
 
