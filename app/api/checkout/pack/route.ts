@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
   });
 
   const config = PACK_CONFIG[pack_type as keyof typeof PACK_CONFIG];
-  const origin = request.headers.get("origin") || "http://localhost:3000";
+  const origin =
+    request.headers.get("origin") ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://burnmatstudio.co.uk";
 
   const session = await getStripe().checkout.sessions.create({
     mode: "payment",

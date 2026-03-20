@@ -2,6 +2,8 @@
 
 import type { TimetableSlot } from "@/lib/types";
 
+const BOOKING_CUTOFF_MINS = 30;
+
 const colorMap: Record<string, string> = {
   "hot-pilates": "bg-ember",
   "hot-yoga": "bg-ember",
@@ -10,6 +12,14 @@ const colorMap: Record<string, string> = {
   "beginners-pilates": "bg-sand",
   "baby-me-yoga": "bg-cocoa",
 };
+
+function isBookingClosed(slot: TimetableSlot): boolean {
+  const [h, m] = slot.start_time.split(":").map(Number);
+  const classStart = new Date(slot.date + "T00:00:00");
+  classStart.setHours(h, m, 0, 0);
+  const cutoff = new Date(classStart.getTime() - BOOKING_CUTOFF_MINS * 60_000);
+  return new Date() >= cutoff;
+}
 
 export default function SlotCard({
   slot,
@@ -20,6 +30,7 @@ export default function SlotCard({
 }) {
   const barColor = colorMap[slot.class_slug] ?? "bg-gold";
   const isFull = slot.spots_remaining <= 0;
+  const isClosed = !isFull && isBookingClosed(slot);
   const isLow = slot.spots_remaining > 0 && slot.spots_remaining <= 3;
   const priceDisplay =
     slot.price_pence % 100 === 0
@@ -28,11 +39,14 @@ export default function SlotCard({
 
   // Format time from "HH:MM:SS" to "HH:MM"
   const time = slot.start_time.slice(0, 5);
+  const isBookable = !isFull && !isClosed;
 
   return (
     <div
-      className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl transition-colors hover:bg-cream mb-0.5 cursor-pointer"
-      onClick={isFull ? undefined : onBook}
+      className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl transition-colors mb-0.5 ${
+        isBookable ? "hover:bg-cream cursor-pointer" : "cursor-default"
+      }`}
+      onClick={isBookable ? onBook : undefined}
     >
       {/* Time */}
       <div className="min-w-[55px] text-right">
@@ -56,14 +70,15 @@ export default function SlotCard({
       {/* Spots remaining */}
       <span
         className={`text-[0.65rem] font-semibold tracking-[0.05em] uppercase px-2.5 py-0.5 rounded-full whitespace-nowrap hidden sm:inline ${
-          isFull
+          isFull || isClosed
             ? "bg-warm-grey/10 text-warm-grey"
             : isLow
               ? "bg-ember/[0.12] text-ember"
               : "bg-gold/[0.12] text-gold"
         }`}
+        title={isClosed ? "Bookings close 30 minutes before class starts" : undefined}
       >
-        {isFull ? "Full" : `${slot.spots_remaining} left`}
+        {isFull ? "Full" : isClosed ? "Closed" : `${slot.spots_remaining} left`}
       </span>
 
       {/* Price */}
@@ -79,6 +94,19 @@ export default function SlotCard({
         >
           Full
         </button>
+      ) : isClosed ? (
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            disabled
+            title="Bookings close 30 minutes before class starts"
+            className="px-4 py-1.5 bg-sand text-warm-grey rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-not-allowed"
+          >
+            Closed
+          </button>
+          <span className="text-[0.55rem] text-warm-grey text-center leading-tight max-w-[80px]">
+            Closes 30 min before
+          </span>
+        </div>
       ) : (
         <button
           onClick={(e) => {

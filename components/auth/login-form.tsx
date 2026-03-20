@@ -25,7 +25,8 @@ export default function LoginForm() {
     });
 
     if (error) {
-      setError(error.message);
+      // Generic message prevents user enumeration
+      setError("Invalid email or password. Please try again.");
       setLoading(false);
       return;
     }

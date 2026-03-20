@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   const [{ data: slot, error }, { data: profile }] = await Promise.all([
     supabase
       .from("schedule")
-      .select("id, classes(name, price_pence)")
+      .select("id, start_time, classes(name, price_pence)")
       .eq("id", schedule_id)
       .eq("studio_id", studioId)
       .single(),
@@ -40,6 +40,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Schedule slot not found" }, { status: 404 });
   }
 
+  // Check booking cutoff (30 min before class starts)
+  const [h, m] = (slot.start_time as string).split(":").map(Number);
+  const classStart = new Date(date + "T00:00:00");
+  classStart.setHours(h, m, 0, 0);
+  const cutoff = new Date(classStart.getTime() - 30 * 60_000);
+  if (new Date() >= cutoff) {
+    return NextResponse.json(
+      { error: "Bookings close 30 minutes before class starts" },
+      { status: 400 }
+    );
+  }
+
   const cls = slot.classes as unknown as { name: string; price_pence: number };
 
   // Get or create Stripe Customer for this user
@@ -49,7 +61,10 @@ export async function POST(request: NextRequest) {
     fullName: profile?.full_name || null,
   });
 
-  const origin = request.headers.get("origin") || "http://localhost:3000";
+  const origin =
+    request.headers.get("origin") ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://burnmatstudio.co.uk";
 
   const session = await getStripe().checkout.sessions.create({
     mode: "payment",

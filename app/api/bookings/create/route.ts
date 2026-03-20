@@ -21,6 +21,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 0. Check booking cutoff (30 min before class starts)
+  const { data: scheduleSlot } = await supabase
+    .from("schedule")
+    .select("start_time")
+    .eq("id", schedule_id)
+    .eq("studio_id", studioId)
+    .single();
+
+  if (!scheduleSlot) {
+    return NextResponse.json({ error: "Schedule slot not found" }, { status: 404 });
+  }
+
+  const [h, m] = scheduleSlot.start_time.split(":").map(Number);
+  const classStart = new Date(date + "T00:00:00");
+  classStart.setHours(h, m, 0, 0);
+  const cutoff = new Date(classStart.getTime() - 30 * 60_000);
+  if (new Date() >= cutoff) {
+    return NextResponse.json(
+      { error: "Bookings close 30 minutes before class starts" },
+      { status: 400 }
+    );
+  }
+
   // 1. Check user has a valid, non-expired pack with credits > 0
   const { data: packs } = await supabase
     .from("class_packs")
@@ -71,14 +94,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Decrement pack credits
-  const { error: packError } = await supabase
+  // 4. Atomically decrement pack credits (guard against race conditions)
+  const { data: updatedPack, error: packError } = await supabase
     .from("class_packs")
     .update({ credits_remaining: pack.credits_remaining - 1 })
-    .eq("id", pack.id);
+    .eq("id", pack.id)
+    .gt("credits_remaining", 0)
+    .select("id")
+    .single();
 
-  if (packError) {
-    return NextResponse.json({ error: "Failed to use pack credit" }, { status: 500 });
+  if (packError || !updatedPack) {
+    return NextResponse.json({ error: "No credits available" }, { status: 400 });
   }
 
   // 5. Create booking

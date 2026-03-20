@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, getStudioId } from "@/lib/auth";
-import Link from "next/link";
 import PackStatus from "@/components/account/pack-status";
 import AccountHeader from "@/components/account/account-header";
+import BuyPackButton from "@/components/account/buy-pack-button";
 import type { Class } from "@/lib/types";
 
 export const metadata = {
@@ -69,12 +69,12 @@ export default async function PacksPage() {
             <p className="text-[0.68rem] text-warm-grey">
               Use within 6 weeks
             </p>
-            <Link
-              href="/api/checkout/pack?pack_type=10"
-              className="block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-gold text-gold bg-transparent hover:bg-gold hover:text-cocoa transition-colors"
+            <BuyPackButton
+              packType="10"
+              className="block w-full mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-gold text-gold bg-transparent hover:bg-gold hover:text-cocoa transition-colors cursor-pointer"
             >
               Buy pack
-            </Link>
+            </BuyPackButton>
           </div>
 
           {/* 5 Class Pack */}
@@ -91,12 +91,12 @@ export default async function PacksPage() {
             <p className="text-[0.68rem] text-warm-grey">
               Use within 4 weeks
             </p>
-            <Link
-              href="/api/checkout/pack?pack_type=5"
-              className="block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-cocoa text-cocoa bg-transparent hover:bg-cocoa hover:text-wheat transition-colors"
+            <BuyPackButton
+              packType="5"
+              className="block w-full mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-cocoa text-cocoa bg-transparent hover:bg-cocoa hover:text-wheat transition-colors cursor-pointer"
             >
               Buy pack
-            </Link>
+            </BuyPackButton>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { emailLayout, BRAND } from "./layout";
+import { emailLayout, BRAND, esc } from "./layout";
 
 interface PackConfirmationData {
   memberName: string;
@@ -17,11 +17,11 @@ export function packConfirmationEmail(data: PackConfirmationData) {
       <tr>
         <td style="padding:24px;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Pack</p>
-          <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.wheat};">${data.packType} Class Pack</p>
+          <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.wheat};">${esc(data.packType)} Class Pack</p>
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Credits</p>
           <p style="margin:0 0 16px;font-size:14px;color:${BRAND.wheat};">${data.credits} classes</p>
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Expires</p>
-          <p style="margin:0 0 16px;font-size:14px;color:${BRAND.wheat};">${data.expiresAt}</p>
+          <p style="margin:0 0 16px;font-size:14px;color:${BRAND.wheat};">${esc(data.expiresAt)}</p>
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Total paid</p>
           <p style="margin:0;font-size:14px;color:${BRAND.wheat};">&pound;${data.pricePounds}</p>
         </td>

@@ -1,3 +1,12 @@
+/** Escape user-supplied strings before interpolating into HTML email templates */
+export function esc(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 const BRAND = {
   cocoa: "#473728",
   wheat: "#DFD0A5",

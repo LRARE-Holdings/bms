@@ -22,6 +22,28 @@ export default function PrivacyPage() {
         <li><strong>Session data:</strong> authentication cookies to keep you logged in.</li>
       </ul>
 
+      <h2>Lawful Basis for Processing</h2>
+      <p>
+        Under UK GDPR, we rely on the following lawful bases to process your
+        personal data:
+      </p>
+      <ul>
+        <li>
+          <strong>Contract:</strong> processing your account, bookings, and
+          payments is necessary to fulfil the service you have signed up for.
+        </li>
+        <li>
+          <strong>Legitimate interests:</strong> sending you transactional
+          emails (confirmations, cancellations, receipts) and maintaining the
+          security of our systems.
+        </li>
+        <li>
+          <strong>Consent:</strong> any future marketing communications will
+          only be sent with your explicit opt-in consent, which you may
+          withdraw at any time.
+        </li>
+      </ul>
+
       <h2>How We Use Your Data</h2>
       <ul>
         <li>To manage your bookings and class pack credits.</li>

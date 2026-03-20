@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const sig = request.headers.get("stripe-signature");
 
   if (!sig) {
-    return NextResponse.json({ error: "No signature" }, { status: 400 });
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   let event: Stripe.Event;
@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Webhook signature verification failed:", err);
     return NextResponse.json(
-      { error: `Webhook signature verification failed: ${message}` },
+      { error: "Webhook signature verification failed" },
       { status: 400 }
     );
   }
@@ -36,7 +36,20 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
 
     if (metadata.schedule_id) {
-      // Drop-in booking
+      // Validate required metadata for drop-in booking
+      if (!metadata.studio_id || !metadata.profile_id || !metadata.date) {
+        console.error("Missing required booking metadata:", {
+          session_id: session.id,
+          has_studio_id: !!metadata.studio_id,
+          has_profile_id: !!metadata.profile_id,
+          has_date: !!metadata.date,
+        });
+        return NextResponse.json(
+          { error: "Missing required metadata" },
+          { status: 400 }
+        );
+      }
+
       // Idempotency: check if booking already exists
       const { data: existing } = await supabase
         .from("bookings")
@@ -57,7 +70,10 @@ export async function POST(request: NextRequest) {
 
         if (error) {
           console.error("Failed to create booking:", error);
-          return NextResponse.json({ error: error.message }, { status: 500 });
+          return NextResponse.json(
+            { error: "Failed to process booking" },
+            { status: 500 }
+          );
         }
 
         sendBookingConfirmation({
@@ -69,7 +85,19 @@ export async function POST(request: NextRequest) {
         });
       }
     } else if (metadata.pack_type) {
-      // Pack purchase
+      // Validate required metadata for pack purchase
+      if (!metadata.studio_id || !metadata.profile_id) {
+        console.error("Missing required pack metadata:", {
+          session_id: session.id,
+          has_studio_id: !!metadata.studio_id,
+          has_profile_id: !!metadata.profile_id,
+        });
+        return NextResponse.json(
+          { error: "Missing required metadata" },
+          { status: 400 }
+        );
+      }
+
       // Idempotency: check if pack already exists
       const { data: existing } = await supabase
         .from("class_packs")
@@ -89,13 +117,17 @@ export async function POST(request: NextRequest) {
           pack_type: metadata.pack_type,
           credits_total: creditsTotal,
           credits_remaining: creditsTotal,
+          purchased_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
           stripe_session_id: session.id,
         });
 
         if (error) {
           console.error("Failed to create class pack:", error);
-          return NextResponse.json({ error: error.message }, { status: 500 });
+          return NextResponse.json(
+            { error: "Failed to process pack purchase" },
+            { status: 500 }
+          );
         }
 
         sendPackConfirmation({

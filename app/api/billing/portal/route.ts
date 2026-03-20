@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const origin = request.headers.get("origin") || "http://localhost:3000";
+  const origin =
+    request.headers.get("origin") ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://burnmatstudio.co.uk";
 
   const portalSession = await getStripe().billingPortal.sessions.create({
     customer: profile.stripe_customer_id,

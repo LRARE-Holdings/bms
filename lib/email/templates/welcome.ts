@@ -1,4 +1,4 @@
-import { emailLayout, BRAND } from "./layout";
+import { emailLayout, BRAND, esc } from "./layout";
 
 interface WelcomeData {
   memberName: string;
@@ -8,7 +8,7 @@ export function welcomeEmail(data: WelcomeData) {
   const firstName = data.memberName.split(" ")[0] || "there";
 
   const content = `
-    <h2 style="margin:0 0 8px;font-size:20px;font-weight:600;color:${BRAND.cocoa};">Welcome, ${firstName}</h2>
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:600;color:${BRAND.cocoa};">Welcome, ${esc(firstName)}</h2>
     <p style="margin:0 0 24px;font-size:14px;color:${BRAND.warmGrey};line-height:1.6;">
       Thanks for joining Burn Mat Studio. We can't wait to see you on the mat.
     </p>

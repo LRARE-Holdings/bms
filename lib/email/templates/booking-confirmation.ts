@@ -1,4 +1,4 @@
-import { emailLayout, BRAND } from "./layout";
+import { emailLayout, BRAND, esc } from "./layout";
 
 interface BookingConfirmationData {
   memberName: string;
@@ -23,11 +23,11 @@ export function bookingConfirmationEmail(data: BookingConfirmationData) {
       <tr>
         <td style="padding:20px;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Class</p>
-          <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.cocoa};">${data.className}</p>
+          <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.cocoa};">${esc(data.className)}</p>
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Date &amp; Time</p>
-          <p style="margin:0 0 16px;font-size:14px;color:${BRAND.cocoa};">${data.date} at ${data.time}</p>
+          <p style="margin:0 0 16px;font-size:14px;color:${BRAND.cocoa};">${esc(data.date)} at ${esc(data.time)}</p>
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${BRAND.gold};">Instructor</p>
-          <p style="margin:0;font-size:14px;color:${BRAND.cocoa};">${data.instructor}</p>
+          <p style="margin:0;font-size:14px;color:${BRAND.cocoa};">${esc(data.instructor)}</p>
         </td>
       </tr>
     </table>
@@ -40,7 +40,7 @@ export function bookingConfirmationEmail(data: BookingConfirmationData) {
   `;
 
   return {
-    subject: `Booking confirmed — ${data.className}, ${data.date}`,
+    subject: `Booking confirmed — ${esc(data.className)}, ${esc(data.date)}`,
     html: emailLayout(content),
   };
 }
