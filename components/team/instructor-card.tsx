@@ -27,7 +27,6 @@ export default function InstructorCard({
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            quality={90}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-cocoa to-cocoa/80 flex items-center justify-center">
