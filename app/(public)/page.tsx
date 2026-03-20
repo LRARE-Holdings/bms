@@ -167,12 +167,12 @@ export default async function HomePage() {
           </h2>
           <p className="text-[0.92rem] text-warm-grey leading-relaxed mb-2">
             Burn Mat Studio is a boutique Pilates and yoga studio in
-            Stockton-on-Tees, founded by Lucy Healy.
+            Stockton-on-Tees, <br></br>founded by Lucy Healy.
           </p>
           <p className="text-[0.92rem] text-warm-grey leading-relaxed mb-4">
-            Whether you&apos;re brand new to movement or a seasoned
-            practitioner, our classes are designed to challenge you at your own
-            level. No mirrors, no judgement &mdash; just good work on the mat.
+            Whether you&apos;re brand new to pilates or a seasoned
+            pro, our classes are designed to challenge you at your own
+            level. Good vibes, no judgement
           </p>
           <div className="flex gap-10 pt-5 border-t border-sand mt-2">
             <div>

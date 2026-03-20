@@ -1,8 +1,6 @@
 import Image from "next/image";
 import type { Instructor } from "@/lib/types";
-
-// Photos we know exist — avoids broken images at build time
-const AVAILABLE_PHOTOS = ["lucy", "amelia"];
+import { getInstructorPhotoUrl } from "@/lib/supabase/storage";
 
 export default function InstructorCard({
   instructor,
@@ -11,7 +9,7 @@ export default function InstructorCard({
   instructor: Instructor;
   classTags?: string[];
 }) {
-  const hasPhoto = AVAILABLE_PHOTOS.includes(instructor.slug);
+  const photoUrl = getInstructorPhotoUrl(instructor.photo_url);
   const initials = instructor.name
     .split(" ")
     .map((n) => n[0])
@@ -22,9 +20,9 @@ export default function InstructorCard({
     <div className="bg-white border border-sand rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_12px_40px_rgba(71,55,40,0.08)] hover:border-gold text-center">
       {/* Photo or placeholder */}
       <div className="h-52 bg-sand overflow-hidden">
-        {hasPhoto ? (
+        {photoUrl ? (
           <Image
-            src={`/team/${instructor.slug}.png`}
+            src={photoUrl}
             alt={instructor.name}
             width={1110}
             height={624}

@@ -96,12 +96,20 @@ export default function Footer() {
               Email us
             </a>
             <a
-              href="https://instagram.com"
+              href="https://instagram.com/burnmatstudio"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[0.8rem] text-sand hover:text-gold transition-colors"
             >
               Instagram
+            </a>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Burn+Mat+Studio+TS16+0TA"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[0.8rem] text-sand hover:text-gold transition-colors"
+            >
+              Get to us
             </a>
           </div>
         </div>
