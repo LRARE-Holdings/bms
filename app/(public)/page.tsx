@@ -49,7 +49,7 @@ export default async function HomePage() {
   return (
     <>
       {/* ═══ HERO ═══ */}
-      <section className="min-h-screen relative flex flex-col items-center justify-center bg-cocoa overflow-hidden">
+      <section className="min-h-dvh relative flex flex-col items-center justify-center bg-cocoa overflow-hidden">
         {/* Animated flowing gradients */}
         <div className="absolute inset-0">
           <HeroCanvas />
