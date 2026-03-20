@@ -19,15 +19,15 @@ export default function InstructorCard({
   return (
     <div className="bg-white border border-sand rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_12px_40px_rgba(71,55,40,0.08)] hover:border-gold text-center">
       {/* Photo or placeholder */}
-      <div className="h-52 bg-sand overflow-hidden">
+      <div className="relative h-52 bg-sand overflow-hidden">
         {photoUrl ? (
           <Image
             src={photoUrl}
             alt={instructor.name}
-            width={1110}
-            height={624}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            quality={90}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-cocoa to-cocoa/80 flex items-center justify-center">
