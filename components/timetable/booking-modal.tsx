@@ -15,6 +15,7 @@ export default function BookingModal({
 }) {
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [packCredits, setPackCredits] = useState<number | null>(null);
+  const [hasMembership, setHasMembership] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,17 +27,36 @@ export default function BookingModal({
       setUser(user);
 
       if (user) {
-        // Check for active pack credits
         const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
-        const { data: packs } = await supabase
-          .from("class_packs")
-          .select("credits_remaining")
-          .eq("profile_id", user.id)
-          .eq("studio_id", studioId)
-          .gt("credits_remaining", 0)
-          .gt("expires_at", new Date().toISOString());
 
-        const total = packs?.reduce((sum, p) => sum + p.credits_remaining, 0) ?? 0;
+        // Check for active membership and pack credits in parallel
+        const [membershipResult, packsResult] = await Promise.all([
+          supabase
+            .from("memberships")
+            .select("id")
+            .eq("profile_id", user.id)
+            .eq("studio_id", studioId)
+            .eq("status", "active")
+            .gt("current_period_end", new Date().toISOString())
+            .limit(1),
+          supabase
+            .from("class_packs")
+            .select("credits_remaining")
+            .eq("profile_id", user.id)
+            .eq("studio_id", studioId)
+            .gt("credits_remaining", 0)
+            .gt("expires_at", new Date().toISOString()),
+        ]);
+
+        setHasMembership(
+          !!membershipResult.data && membershipResult.data.length > 0
+        );
+
+        const total =
+          packsResult.data?.reduce(
+            (sum, p) => sum + p.credits_remaining,
+            0
+          ) ?? 0;
         setPackCredits(total);
       }
     }
@@ -45,8 +65,8 @@ export default function BookingModal({
 
   const priceDisplay =
     slot.price_pence % 100 === 0
-      ? `£${slot.price_pence / 100}`
-      : `£${(slot.price_pence / 100).toFixed(2)}`;
+      ? `\u00a3${slot.price_pence / 100}`
+      : `\u00a3${(slot.price_pence / 100).toFixed(2)}`;
 
   const time = slot.start_time.slice(0, 5);
   const dateObj = new Date(slot.date + "T00:00:00");
@@ -56,11 +76,11 @@ export default function BookingModal({
     month: "long",
   });
 
-  async function handleStripeCheckout() {
+  async function handleMembershipBooking() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/checkout/session", {
+      const res = await fetch("/api/bookings/membership", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -69,10 +89,10 @@ export default function BookingModal({
         }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      if (res.ok) {
+        onBooked();
       } else {
-        setError(data.error || "Failed to create checkout session");
+        setError(data.error || "Failed to book class");
         setLoading(false);
       }
     } catch {
@@ -106,6 +126,10 @@ export default function BookingModal({
     }
   }
 
+  function handlePayCheckout() {
+    window.location.href = `/account/checkout?type=dropin&schedule_id=${slot.schedule_id}&date=${slot.date}`;
+  }
+
   return (
     <div
       className="fixed inset-0 bg-charcoal/55 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
@@ -129,7 +153,6 @@ export default function BookingModal({
         {/* Body */}
         <div className="px-6 py-5">
           {!user ? (
-            // Not logged in
             <div className="text-center py-4">
               <p className="text-[0.88rem] text-slate mb-4">
                 Log in or sign up to book this class.
@@ -157,18 +180,28 @@ export default function BookingModal({
                 </span>
               </div>
 
-              {/* Drop-in price */}
-              <div className="flex justify-between items-center bg-cream px-4 py-3 rounded-xl my-3">
-                <span className="text-[0.82rem] font-semibold text-cocoa">
-                  Drop-in price
-                </span>
-                <span className="font-display text-xl font-semibold text-cocoa">
-                  {priceDisplay}
-                </span>
-              </div>
+              {/* Membership option */}
+              {hasMembership && (
+                <div className="flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl my-3">
+                  <span className="text-[0.8rem] text-cocoa">Membership</span>
+                  <strong className="text-[0.8rem] text-gold">Included</strong>
+                </div>
+              )}
 
-              {/* Pack option */}
-              {packCredits !== null && packCredits > 0 && (
+              {/* Drop-in price (show when no membership) */}
+              {!hasMembership && (
+                <div className="flex justify-between items-center bg-cream px-4 py-3 rounded-xl my-3">
+                  <span className="text-[0.82rem] font-semibold text-cocoa">
+                    Drop-in price
+                  </span>
+                  <span className="font-display text-xl font-semibold text-cocoa">
+                    {priceDisplay}
+                  </span>
+                </div>
+              )}
+
+              {/* Pack option (show when no membership but has credits) */}
+              {!hasMembership && packCredits !== null && packCredits > 0 && (
                 <>
                   <div className="text-center text-[0.75rem] text-warm-grey my-2">
                     or use a class pack credit
@@ -186,7 +219,7 @@ export default function BookingModal({
                 <p className="text-[0.8rem] text-ember mb-3">{error}</p>
               )}
 
-              {/* Actions */}
+              {/* Actions — priority: membership > pack credit > pay */}
               <div className="flex gap-2.5 mt-2">
                 <button
                   onClick={onClose}
@@ -194,7 +227,15 @@ export default function BookingModal({
                 >
                   Cancel
                 </button>
-                {packCredits !== null && packCredits > 0 ? (
+                {hasMembership ? (
+                  <button
+                    onClick={handleMembershipBooking}
+                    disabled={loading}
+                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat transition-colors disabled:opacity-60"
+                  >
+                    {loading ? "Booking..." : "Book with membership"}
+                  </button>
+                ) : packCredits !== null && packCredits > 0 ? (
                   <button
                     onClick={handlePackBooking}
                     disabled={loading}
@@ -204,11 +245,11 @@ export default function BookingModal({
                   </button>
                 ) : (
                   <button
-                    onClick={handleStripeCheckout}
+                    onClick={handlePayCheckout}
                     disabled={loading}
                     className="flex-1 py-2.5 rounded-full bg-cocoa text-wheat text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-gold hover:text-cocoa transition-colors disabled:opacity-60"
                   >
-                    {loading ? "Redirecting..." : "Pay with Stripe"}
+                    {loading ? "Loading..." : `Pay ${priceDisplay}`}
                   </button>
                 )}
               </div>

@@ -76,7 +76,7 @@ export async function sendBookingConfirmation({
   studioId: string;
   scheduleId: string;
   date: string;
-  paymentMethod: "stripe" | "pack_credit";
+  paymentMethod: "stripe" | "pack_credit" | "membership" | "complimentary";
 }) {
   try {
     const [config, profile, details] = await Promise.all([
@@ -113,12 +113,14 @@ export async function sendPackConfirmation({
   packType,
   credits,
   expiresAt,
+  pricePounds,
 }: {
   profileId: string;
   studioId: string;
   packType: string;
   credits: number;
   expiresAt: string;
+  pricePounds?: string;
 }) {
   try {
     const [config, profile] = await Promise.all([
@@ -128,7 +130,7 @@ export async function sendPackConfirmation({
 
     if (!profile.email) return;
 
-    const pricePounds = packType === "10" ? "75.00" : "37.50";
+    const resolvedPrice = pricePounds || (packType === "10" ? "75.00" : "37.50");
     const expiryFormatted = new Date(expiresAt).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "long",
@@ -140,7 +142,7 @@ export async function sendPackConfirmation({
       packType,
       credits,
       expiresAt: expiryFormatted,
-      pricePounds,
+      pricePounds: resolvedPrice,
     });
 
     await getResend().emails.send({

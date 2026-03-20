@@ -8,7 +8,7 @@ import ClassCard from "@/components/classes/class-card";
 import InstructorCard from "@/components/team/instructor-card";
 import TimetableView from "@/components/timetable/timetable-view";
 import HeroCanvas from "@/components/hero/hero-canvas";
-import type { Class, Instructor } from "@/lib/types";
+import type { Class, Instructor, PackTier, MembershipTier } from "@/lib/types";
 
 const classTagsMap: Record<string, string[]> = {
   lucy: ["Hot Pilates", "Hot Yoga", "Beginners"],
@@ -20,18 +20,31 @@ export default async function HomePage() {
   const supabase = await createClient();
   const studioId = getStudioId();
 
-  const [{ data: classes }, { data: instructors }] = await Promise.all([
-    supabase
-      .from("classes")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("price_pence", { ascending: false }),
-    supabase
-      .from("instructors")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("created_at"),
-  ]);
+  const [{ data: classes }, { data: instructors }, { data: packTiers }, { data: membershipTiers }] =
+    await Promise.all([
+      supabase
+        .from("classes")
+        .select("*")
+        .eq("studio_id", studioId)
+        .order("price_pence", { ascending: false }),
+      supabase
+        .from("instructors")
+        .select("*")
+        .eq("studio_id", studioId)
+        .order("created_at"),
+      supabase
+        .from("pack_tiers")
+        .select("*")
+        .eq("studio_id", studioId)
+        .eq("is_active", true)
+        .order("price_pence", { ascending: false }),
+      supabase
+        .from("membership_tiers")
+        .select("*")
+        .eq("studio_id", studioId)
+        .eq("is_active", true)
+        .order("price_pence", { ascending: true }),
+    ]);
 
   return (
     <>
@@ -243,7 +256,7 @@ export default async function HomePage() {
           Simple, transparent pricing
         </h2>
         <p className="text-[0.92rem] text-warm-grey leading-relaxed max-w-lg mb-10">
-          Pay per class or save with a pack. No memberships, no lock-in.
+          Pay per class, save with a pack{(membershipTiers as MembershipTier[])?.length > 0 ? ", or subscribe for unlimited access" : ""}. No lock-in.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
@@ -272,54 +285,98 @@ export default async function HomePage() {
             ))}
           </div>
 
-          {/* Pack cards */}
+          {/* Pack & membership cards */}
           <div className="flex flex-col gap-4">
-            {/* 10 Class Pack */}
-            <div className="bg-cocoa rounded-2xl p-6 text-center flex-1 flex flex-col justify-center relative">
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-ember text-white text-[0.6rem] font-semibold tracking-[0.1em] uppercase px-3 py-0.5 rounded-full">
-                Best value
-              </div>
-              <h4 className="font-display text-xl font-semibold text-wheat mb-0.5">
-                10 Class Pack
-              </h4>
-              <div className="font-display text-[2.2rem] font-light text-wheat my-1">
-                &pound;75
-              </div>
-              <p className="text-[0.72rem] text-warm-grey mb-0.5">
-                &pound;7.50 per class
-              </p>
-              <p className="text-[0.68rem] text-warm-grey">
-                Use within 6 weeks
-              </p>
-              <Link
-                href="/signup"
-                className="block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-gold text-gold bg-transparent hover:bg-gold hover:text-cocoa transition-colors"
-              >
-                Buy pack
-              </Link>
-            </div>
+            {(packTiers as PackTier[])?.map((tier, i) => {
+              const perClass = (tier.price_pence / tier.credits / 100).toFixed(2);
+              const validityLabel =
+                tier.validity_days % 7 === 0
+                  ? `${tier.validity_days / 7} weeks`
+                  : `${tier.validity_days} days`;
+              const isFirst = i === 0;
 
-            {/* 5 Class Pack */}
-            <div className="bg-white border border-sand rounded-2xl p-6 text-center flex-1 flex flex-col justify-center">
-              <h4 className="font-display text-xl font-semibold text-cocoa mb-0.5">
-                5 Class Pack
-              </h4>
-              <div className="font-display text-[2.2rem] font-light text-cocoa my-1">
-                &pound;37.50
-              </div>
-              <p className="text-[0.72rem] text-warm-grey mb-0.5">
-                &pound;7.50 per class
-              </p>
-              <p className="text-[0.68rem] text-warm-grey">
-                Use within 4 weeks
-              </p>
-              <Link
-                href="/signup"
-                className="block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] border-cocoa text-cocoa bg-transparent hover:bg-cocoa hover:text-wheat transition-colors"
-              >
-                Buy pack
-              </Link>
-            </div>
+              return (
+                <div
+                  key={tier.id}
+                  className={`rounded-2xl p-6 text-center flex-1 flex flex-col justify-center relative ${
+                    isFirst
+                      ? "bg-cocoa"
+                      : "bg-white border border-sand"
+                  }`}
+                >
+                  {isFirst && (
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-ember text-white text-[0.6rem] font-semibold tracking-[0.1em] uppercase px-3 py-0.5 rounded-full">
+                      Best value
+                    </div>
+                  )}
+                  <h4
+                    className={`font-display text-xl font-semibold mb-0.5 ${
+                      isFirst ? "text-wheat" : "text-cocoa"
+                    }`}
+                  >
+                    {tier.name}
+                  </h4>
+                  <div
+                    className={`font-display text-[2.2rem] font-light my-1 ${
+                      isFirst ? "text-wheat" : "text-cocoa"
+                    }`}
+                  >
+                    &pound;{(tier.price_pence / 100).toFixed(2)}
+                  </div>
+                  <p className="text-[0.72rem] text-warm-grey mb-0.5">
+                    &pound;{perClass} per class
+                  </p>
+                  <p className="text-[0.68rem] text-warm-grey">
+                    Use within {validityLabel}
+                  </p>
+                  <Link
+                    href="/signup"
+                    className={`block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] transition-colors ${
+                      isFirst
+                        ? "border-gold text-gold bg-transparent hover:bg-gold hover:text-cocoa"
+                        : "border-cocoa text-cocoa bg-transparent hover:bg-cocoa hover:text-wheat"
+                    }`}
+                  >
+                    Buy pack
+                  </Link>
+                </div>
+              );
+            })}
+
+            {(membershipTiers as MembershipTier[])?.map((tier) => {
+              const intervalLabel =
+                tier.interval_count > 1
+                  ? `every ${tier.interval_count} ${tier.interval}s`
+                  : `per ${tier.interval}`;
+
+              return (
+                <div
+                  key={tier.id}
+                  className="bg-gold/10 border border-gold/30 rounded-2xl p-6 text-center flex-1 flex flex-col justify-center"
+                >
+                  <h4 className="font-display text-xl font-semibold text-cocoa mb-0.5">
+                    {tier.name}
+                  </h4>
+                  {tier.description && (
+                    <p className="text-[0.72rem] text-warm-grey mb-1">
+                      {tier.description}
+                    </p>
+                  )}
+                  <div className="font-display text-[2.2rem] font-light text-cocoa my-1">
+                    &pound;{(tier.price_pence / 100).toFixed(2)}
+                  </div>
+                  <p className="text-[0.72rem] text-warm-grey">
+                    {intervalLabel}
+                  </p>
+                  <Link
+                    href="/signup"
+                    className="block mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center bg-cocoa text-wheat hover:bg-gold hover:text-cocoa transition-colors"
+                  >
+                    Subscribe
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

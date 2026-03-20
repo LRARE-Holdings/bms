@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Membership and complimentary bookings — just cancel, no credit operations
+
   sendBookingCancellation({
     profileId: user.id,
     studioId,

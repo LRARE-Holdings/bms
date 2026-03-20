@@ -1,7 +1,6 @@
 export type UserRole = "member" | "staff" | "admin";
 export type BookingStatus = "confirmed" | "cancelled";
-export type PaymentMethod = "stripe" | "pack_credit";
-export type PackType = "5" | "10";
+export type PaymentMethod = "stripe" | "pack_credit" | "complimentary" | "membership";
 
 export interface Studio {
   id: string;
@@ -11,6 +10,8 @@ export interface Studio {
   email_from: string | null;
   email_domain: string | null;
   branding: Record<string, string>;
+  stripe_account_id: string | null;
+  stripe_onboarding_complete: boolean;
   active: boolean;
   created_at: string;
 }
@@ -43,6 +44,8 @@ export interface Class {
   duration_mins: number;
   price_pence: number;
   image_url: string | null;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
   created_at: string;
 }
 
@@ -85,7 +88,8 @@ export interface ClassPack {
   id: string;
   studio_id: string;
   profile_id: string;
-  pack_type: PackType;
+  pack_type?: string;
+  pack_tier_id?: string | null;
   credits_total: number;
   credits_remaining: number;
   purchased_at: string;
@@ -93,6 +97,48 @@ export interface ClassPack {
   stripe_session_id: string;
   created_at: string;
 }
+
+export interface PackTier {
+  id: string;
+  studio_id: string;
+  name: string;
+  credits: number;
+  price_pence: number;
+  validity_days: number;
+  is_active: boolean;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+  created_at: string;
+}
+
+export interface MembershipTier {
+  id: string;
+  studio_id: string;
+  name: string;
+  description: string;
+  price_pence: number;
+  interval: string;
+  interval_count: number;
+  is_active: boolean;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+  created_at: string;
+}
+
+export interface Membership {
+  id: string;
+  studio_id: string;
+  profile_id: string;
+  membership_tier_id: string;
+  stripe_subscription_id: string | null;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+}
+
+export type CheckoutType = "dropin" | "pack" | "membership";
 
 // Composite types for joined queries
 export interface TimetableSlot {
@@ -116,4 +162,8 @@ export interface BookingWithDetails extends Booking {
   duration_mins: number;
   start_time: string;
   instructor_name: string;
+}
+
+export interface ClassPackWithTier extends ClassPack {
+  pack_tiers: { name: string; credits: number } | null;
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { ClassPack } from "@/lib/types";
+import type { ClassPackWithTier } from "@/lib/types";
 
-export default function PackStatus({ packs }: { packs: ClassPack[] }) {
+export default function PackStatus({ packs }: { packs: ClassPackWithTier[] }) {
   if (packs.length === 0) {
     return (
       <div className="bg-white border border-sand rounded-2xl p-8 text-center">
@@ -28,6 +28,10 @@ export default function PackStatus({ packs }: { packs: ClassPack[] }) {
           year: "numeric",
         });
 
+        const packName =
+          pack.pack_tiers?.name ||
+          (pack.pack_type ? `${pack.pack_type} Class Pack` : "Class Pack");
+
         return (
           <div
             key={pack.id}
@@ -35,7 +39,7 @@ export default function PackStatus({ packs }: { packs: ClassPack[] }) {
           >
             <div className="flex items-baseline justify-between mb-2">
               <h3 className="font-display text-lg font-semibold text-cocoa">
-                {pack.pack_type === "10" ? "10" : "5"} Class Pack
+                {packName}
               </h3>
               <span className="text-[0.66rem] font-semibold tracking-[0.08em] uppercase text-gold">
                 Active

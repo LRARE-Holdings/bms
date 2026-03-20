@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, getStudioStripeAccount } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
+  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
 
   const {
     data: { user },
@@ -31,10 +32,15 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ||
     "https://burnmatstudio.co.uk";
 
-  const portalSession = await getStripe().billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
-    return_url: `${origin}/account/billing`,
-  });
+  const stripeAccountId = await getStudioStripeAccount(studioId);
+
+  const portalSession = await getStripe().billingPortal.sessions.create(
+    {
+      customer: profile.stripe_customer_id,
+      return_url: `${origin}/account/billing`,
+    },
+    stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+  );
 
   return NextResponse.json({ url: portalSession.url });
 }

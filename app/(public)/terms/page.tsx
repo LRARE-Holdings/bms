@@ -23,14 +23,23 @@ export default function TermsPage() {
       </p>
 
       <h2>Class Packs</h2>
-      <ul>
-        <li><strong>5 Class Pack:</strong> &pound;37.50. Valid for 4 weeks from purchase.</li>
-        <li><strong>10 Class Pack:</strong> &pound;75.00. Valid for 6 weeks from purchase.</li>
-      </ul>
       <p>
-        Class packs are non-refundable and non-transferable. Unused credits
-        expire at the end of the validity period. Credits cannot be exchanged
-        for cash.
+        Class packs are available at various price points and validity periods.
+        Current pricing is displayed on the{" "}
+        <a href="/#pricing">pricing page</a>. Class packs are non-refundable
+        and non-transferable. Unused credits expire at the end of the validity
+        period. Credits cannot be exchanged for cash.
+      </p>
+
+      <h2>Memberships</h2>
+      <p>
+        Memberships are recurring subscriptions that provide access to book
+        classes at no additional cost for the duration of the subscription
+        period. Memberships automatically renew at the end of each billing
+        cycle unless cancelled. You may cancel your membership at any time from
+        your account or via the billing portal. Cancellation takes effect at the
+        end of the current billing period &mdash; you retain access until then.
+        Memberships are non-refundable for the current billing period.
       </p>
 
       <h2>Studio Conduct</h2>
