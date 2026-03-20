@@ -11,7 +11,7 @@ export const metadata = {
 export default async function StaffPage() {
   const { user, role } = await requireRole("staff");
   const supabase = await createClient();
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
 
   // Find the instructor record for this user (if they are staff, not admin)
   let instructorId: string | null = null;

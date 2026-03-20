@@ -11,6 +11,7 @@ import StripeProvider from "@/components/checkout/stripe-provider";
 import CheckoutForm from "@/components/checkout/checkout-form";
 import Link from "next/link";
 import type { CheckoutType } from "@/lib/types";
+import { getStudioId } from "@/lib/studio-context";
 
 export const metadata = {
   title: "Checkout | Burn Mat Studio",
@@ -22,7 +23,7 @@ export default async function CheckoutPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const user = await requireAuth();
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+  const studioId = await getStudioId();
   const params = await searchParams;
 
   const type = params.type as CheckoutType | undefined;

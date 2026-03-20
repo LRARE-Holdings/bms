@@ -1,37 +1,134 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { updateSession } from "@/lib/supabase/proxy";
+import { createClient } from "@supabase/supabase-js";
 
-export async function proxy(request: NextRequest) {
-  // 1. Always refresh the Supabase session cookie
-  const response = await updateSession(request);
+// In-memory cache: domain → { studioId, expiresAt }
+const domainCache = new Map<
+  string,
+  { studioId: string; expiresAt: number }
+>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-  const { pathname } = request.nextUrl;
+async function resolveStudioId(host: string): Promise<string | null> {
+  // Strip port for local dev (e.g. localhost:3000)
+  const domain = host.split(":")[0];
 
-  // 2. Protected route checks
-  const isAccountRoute = pathname.startsWith("/account");
-  const isStaffRoute = pathname.startsWith("/staff");
-  const isDashboardRoute = pathname.startsWith("/dashboard");
-
-  if (!isAccountRoute && !isStaffRoute && !isDashboardRoute) {
-    return response;
+  // Check cache
+  const cached = domainCache.get(domain);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.studioId;
   }
 
-  // Create a Supabase client scoped to this request
+  // Query studios table using service role (no user session in middleware)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data } = await supabase
+    .from("studios")
+    .select("id")
+    .eq("domain", domain)
+    .single();
+
+  if (!data) return null;
+
+  // Cache the result
+  domainCache.set(domain, {
+    studioId: data.id,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+
+  return data.id;
+}
+
+export async function proxy(request: NextRequest) {
+  // ── 1. Resolve studio ID ──────────────────────────────────────────
+  let studioId: string | null = null;
+
+  if (process.env.NEXT_PUBLIC_STUDIO_ID) {
+    // Local dev fallback
+    studioId = process.env.NEXT_PUBLIC_STUDIO_ID;
+  } else {
+    const host = request.headers.get("host") ?? "";
+    studioId = await resolveStudioId(host);
+
+    if (!studioId) {
+      return NextResponse.redirect("https://useforma.co.uk");
+    }
+  }
+
+  // ── 2. Inject x-studio-id into request headers ────────────────────
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-studio-id", studioId);
+
+  const modifiedRequest = new Request(request.url, {
+    headers: requestHeaders,
+    method: request.method,
+    body: request.body,
+    redirect: request.redirect,
+    signal: request.signal,
+  });
+  const nextRequest = new NextRequest(modifiedRequest);
+  // Copy cookies from original request (NextRequest constructor doesn't always preserve them)
+  for (const cookie of request.cookies.getAll()) {
+    nextRequest.cookies.set(cookie.name, cookie.value);
+  }
+
+  // ── 3. Refresh the Supabase session cookie ────────────────────────
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return nextRequest.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            nextRequest.cookies.set(name, value)
           );
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  await supabase.auth.getUser();
+
+  // ── 4. Protected route checks ─────────────────────────────────────
+  const { pathname } = request.nextUrl;
+
+  const isAccountRoute = pathname.startsWith("/account");
+  const isStaffRoute = pathname.startsWith("/staff");
+  const isDashboardRoute = pathname.startsWith("/dashboard");
+
+  if (!isAccountRoute && !isStaffRoute && !isDashboardRoute) {
+    return supabaseResponse;
+  }
+
+  // Create a Supabase client scoped to this request for auth checks
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return nextRequest.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
@@ -40,7 +137,7 @@ export async function proxy(request: NextRequest) {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   // Not authenticated — redirect to login
   if (!user) {
@@ -52,8 +149,7 @@ export async function proxy(request: NextRequest) {
 
   // For staff/dashboard routes, check role
   if (isStaffRoute || isDashboardRoute) {
-    const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
-    const { data: membership } = await supabase
+    const { data: membership } = await authClient
       .from("studio_memberships")
       .select("role")
       .eq("profile_id", user.id)
@@ -71,7 +167,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return response;
+  return supabaseResponse;
 }
 
 export const config = {

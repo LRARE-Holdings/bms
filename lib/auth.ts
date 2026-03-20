@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStudioId } from "@/lib/studio-context";
 import type { UserRole } from "@/lib/types";
 
-export function getStudioId() {
-  const id = process.env.NEXT_PUBLIC_STUDIO_ID;
-  if (!id) throw new Error("NEXT_PUBLIC_STUDIO_ID is not set");
-  return id;
-}
+export { getStudioId };
 
 export async function getUser() {
   const supabase = await createClient();
@@ -23,7 +20,7 @@ export async function getUserRole(): Promise<UserRole | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
   const { data } = await supabase
     .from("studio_memberships")
     .select("role")

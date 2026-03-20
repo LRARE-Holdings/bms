@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendBookingConfirmation } from "@/lib/email/send";
+import { getStudioId } from "@/lib/studio-context";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+  const studioId = await getStudioId();
 
   const {
     data: { user },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { getStudioId } from "@/lib/studio-context";
 
 export async function POST() {
   const supabase = await createClient();
@@ -13,7 +14,7 @@ export async function POST() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+  const studioId = await getStudioId();
   const adminClient = createAdminClient();
 
   const { data: existing } = await adminClient

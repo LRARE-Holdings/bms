@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getStudioId } from "@/lib/studio-context";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+  const studioId = await getStudioId();
 
   // Calculate week start (Monday)
   const weekStartParam = searchParams.get("week_start");

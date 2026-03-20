@@ -4,10 +4,11 @@ import {
   createDropinPaymentIntent,
   createPackPaymentIntent,
 } from "@/lib/checkout";
+import { getStudioId } from "@/lib/studio-context";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+  const studioId = await getStudioId();
 
   const {
     data: { user },

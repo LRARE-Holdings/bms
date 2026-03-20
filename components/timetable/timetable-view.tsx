@@ -34,7 +34,7 @@ function formatDate(d: Date, dayOffset: number): string {
   return date.getDate().toString();
 }
 
-export default function TimetableView() {
+export default function TimetableView({ studioId }: { studioId: string }) {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().getDay();
@@ -144,6 +144,7 @@ export default function TimetableView() {
       {modalSlot && (
         <BookingModal
           slot={modalSlot}
+          studioId={studioId}
           onClose={() => setModalSlot(null)}
           onBooked={() => {
             setModalSlot(null);

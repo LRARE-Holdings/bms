@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm() {
+export default function LoginForm({ studioId }: { studioId: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +37,6 @@ export default function LoginForm() {
     } = await supabase.auth.getUser();
 
     if (user) {
-      const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
       const { data: membership } = await supabase
         .from("studio_memberships")
         .select("role")

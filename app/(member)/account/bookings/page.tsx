@@ -12,7 +12,7 @@ export const metadata = {
 export default async function BookingsPage() {
   const user = await requireAuth();
   const supabase = await createClient();
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
   const today = new Date().toISOString().split("T")[0];
 
   const [{ data: upcomingBookings }, { data: pastBookings }] =

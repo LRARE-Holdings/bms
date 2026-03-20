@@ -22,7 +22,7 @@ function formatValidity(days: number): string {
 export default async function PacksPage() {
   const user = await requireAuth();
   const supabase = await createClient();
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
 
   const [{ data: packs }, { data: classes }, { data: packTiers }] =
     await Promise.all([

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { getStudioId } from "@/lib/studio-context";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
+      const studioId = await getStudioId();
       const {
         data: { user },
       } = await supabase.auth.getUser();

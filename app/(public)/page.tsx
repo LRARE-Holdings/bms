@@ -18,7 +18,7 @@ const classTagsMap: Record<string, string[]> = {
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
 
   const [{ data: classes }, { data: instructors }, { data: packTiers }, { data: membershipTiers }] =
     await Promise.all([
@@ -134,13 +134,15 @@ export default async function HomePage() {
 
         {/* Scroll indicator */}
         <div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 opacity-0 animate-fade-up"
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-0 animate-fade-up"
           style={{ animationDelay: "2s" }}
         >
-          <span className="text-[0.58rem] tracking-[0.25em] uppercase text-warm-grey/40">
+          <span className="text-[0.65rem] font-medium tracking-[0.3em] uppercase text-wheat/50">
             Scroll
           </span>
-          <div className="w-px h-10 bg-gradient-to-b from-gold/40 to-transparent animate-scroll-pulse" />
+          <div className="w-5 h-9 rounded-full border-[1.5px] border-wheat/30 flex items-start justify-center pt-1.5">
+            <div className="w-1 h-2 rounded-full bg-gold animate-scroll-dot" />
+          </div>
         </div>
       </section>
 
@@ -244,7 +246,7 @@ export default async function HomePage() {
             at 10 for a personal experience.
           </p>
         </div>
-        <TimetableView />
+        <TimetableView studioId={studioId} />
       </section>
 
       {/* ═══ PRICING ═══ */}

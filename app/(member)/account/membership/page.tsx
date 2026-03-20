@@ -14,7 +14,7 @@ export const metadata = {
 export default async function MembershipPage() {
   const user = await requireAuth();
   const supabase = await createClient();
-  const studioId = getStudioId();
+  const studioId = await getStudioId();
 
   const [{ data: memberships }, { data: membershipTiers }] = await Promise.all([
     supabase

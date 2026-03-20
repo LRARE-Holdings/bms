@@ -8,10 +8,12 @@ export default function BookingModal({
   slot,
   onClose,
   onBooked,
+  studioId,
 }: {
   slot: TimetableSlot;
   onClose: () => void;
   onBooked: () => void;
+  studioId: string;
 }) {
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [packCredits, setPackCredits] = useState<number | null>(null);
@@ -27,8 +29,6 @@ export default function BookingModal({
       setUser(user);
 
       if (user) {
-        const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
-
         // Check for active membership and pack credits in parallel
         const [membershipResult, packsResult] = await Promise.all([
           supabase

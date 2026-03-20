@@ -20,6 +20,7 @@
   --animate-fade-up-slow: fadeUpSlow 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   --animate-scale-in: scaleIn 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-scroll-pulse: scrollPulse 2.5s ease-in-out infinite;
+  --animate-scroll-dot: scrollDot 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   --animate-line-grow: lineGrow 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   --animate-hero-glow: heroGlow 4s ease-in-out infinite;
 }
@@ -67,6 +68,21 @@
   50% {
     opacity: 1;
     transform: scaleY(1.2);
+  }
+}
+
+@keyframes scrollDot {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  60% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
   }
 }
 
