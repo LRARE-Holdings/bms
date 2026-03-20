@@ -13,6 +13,11 @@ const colorMap: Record<string, string> = {
   "baby-me-yoga": "bg-cocoa",
 };
 
+function isDatePast(dateStr: string): boolean {
+  const slotDate = new Date(dateStr + "T23:59:59");
+  return new Date() > slotDate;
+}
+
 function isBookingClosed(slot: TimetableSlot): boolean {
   const [h, m] = slot.start_time.split(":").map(Number);
   const classStart = new Date(slot.date + "T00:00:00");
@@ -29,8 +34,9 @@ export default function SlotCard({
   onBook: () => void;
 }) {
   const barColor = colorMap[slot.class_slug] ?? "bg-gold";
+  const isPast = isDatePast(slot.date);
   const isFull = slot.spots_remaining <= 0;
-  const isClosed = !isFull && isBookingClosed(slot);
+  const isClosed = !isFull && !isPast && isBookingClosed(slot);
   const isLow = slot.spots_remaining > 0 && slot.spots_remaining <= 3;
   const priceDisplay =
     slot.price_pence % 100 === 0
@@ -39,12 +45,16 @@ export default function SlotCard({
 
   // Format time from "HH:MM:SS" to "HH:MM"
   const time = slot.start_time.slice(0, 5);
-  const isBookable = !isFull && !isClosed;
+  const isBookable = !isFull && !isClosed && !isPast;
 
   return (
     <div
       className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl transition-colors mb-0.5 ${
-        isBookable ? "hover:bg-cream cursor-pointer" : "cursor-default"
+        isPast
+          ? "opacity-40 cursor-default"
+          : isBookable
+            ? "hover:bg-cream cursor-pointer"
+            : "cursor-default"
       }`}
       onClick={isBookable ? onBook : undefined}
     >
@@ -87,7 +97,14 @@ export default function SlotCard({
       </span>
 
       {/* Book button */}
-      {isFull ? (
+      {isPast ? (
+        <button
+          disabled
+          className="px-4 py-1.5 bg-sand text-warm-grey rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-not-allowed"
+        >
+          Past
+        </button>
+      ) : isFull ? (
         <button
           disabled
           className="px-4 py-1.5 bg-sand text-warm-grey rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-not-allowed"

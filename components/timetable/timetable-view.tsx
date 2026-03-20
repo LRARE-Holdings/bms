@@ -34,6 +34,14 @@ function formatDate(d: Date, dayOffset: number): string {
   return date.getDate().toString();
 }
 
+function isDayPast(weekStart: Date, dayOffset: number): boolean {
+  const date = new Date(weekStart);
+  date.setDate(date.getDate() + dayOffset);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
 export default function TimetableView({ studioId }: { studioId: string }) {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => {
@@ -93,29 +101,44 @@ export default function TimetableView({ studioId }: { studioId: string }) {
 
         {/* Day tabs */}
         <div className="flex border-b border-sand overflow-x-auto">
-          {DAY_NAMES.map((name, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedDay(i)}
-              className={`flex-1 min-w-[65px] py-2.5 px-1 text-center relative transition-colors ${
-                selectedDay === i ? "bg-cream" : "hover:bg-cream"
-              }`}
-            >
-              <span
-                className={`block text-[0.58rem] font-semibold tracking-[0.1em] uppercase ${
-                  selectedDay === i ? "text-gold" : "text-warm-grey"
+          {DAY_NAMES.map((name, i) => {
+            const past = isDayPast(weekStart, i);
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDay(i)}
+                className={`flex-1 min-w-[65px] py-2.5 px-1 text-center relative transition-colors ${
+                  past
+                    ? "opacity-40"
+                    : selectedDay === i
+                      ? "bg-cream"
+                      : "hover:bg-cream"
                 }`}
               >
-                {name}
-              </span>
-              <span className="block text-base font-semibold text-cocoa mt-0.5">
-                {formatDate(weekStart, i)}
-              </span>
-              {selectedDay === i && (
-                <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-gold rounded-sm" />
-              )}
-            </button>
-          ))}
+                <span
+                  className={`block text-[0.58rem] font-semibold tracking-[0.1em] uppercase ${
+                    past
+                      ? "text-warm-grey"
+                      : selectedDay === i
+                        ? "text-gold"
+                        : "text-warm-grey"
+                  }`}
+                >
+                  {name}
+                </span>
+                <span
+                  className={`block text-base font-semibold mt-0.5 ${
+                    past ? "text-warm-grey" : "text-cocoa"
+                  }`}
+                >
+                  {formatDate(weekStart, i)}
+                </span>
+                {selectedDay === i && (
+                  <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-gold rounded-sm" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Slots */}
