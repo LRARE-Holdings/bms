@@ -138,7 +138,7 @@ export interface Membership {
   created_at: string;
 }
 
-export type CheckoutType = "dropin" | "pack" | "membership";
+export type CheckoutType = "dropin" | "pack" | "membership" | "waitlist_claim";
 
 // Composite types for joined queries
 export interface TimetableSlot {
@@ -150,6 +150,7 @@ export interface TimetableSlot {
   class_slug: string;
   duration_mins: number;
   price_pence: number;
+  max_capacity: number;
   instructor_name: string;
   booking_count: number;
   spots_remaining: number;
@@ -166,4 +167,28 @@ export interface BookingWithDetails extends Booking {
 
 export interface ClassPackWithTier extends ClassPack {
   pack_tiers: { name: string; credits: number } | null;
+}
+
+export type WaitlistStatus = "waiting" | "offered" | "claimed" | "expired" | "cancelled";
+
+export interface WaitlistEntry {
+  id: string;
+  studio_id: string;
+  schedule_id: string;
+  date: string;
+  profile_id: string;
+  position: number;
+  status: WaitlistStatus;
+  offered_at: string | null;
+  expires_at: string | null;
+  claim_token: string;
+  created_at: string;
+}
+
+export interface WaitlistEntryWithDetails extends WaitlistEntry {
+  class_name: string;
+  class_slug: string;
+  start_time: string;
+  duration_mins: number;
+  instructor_name: string;
 }

@@ -31,7 +31,7 @@ export function usePaymentPolling({
     const interval = setInterval(async () => {
       let found = false;
 
-      if (type === "dropin" && scheduleId && date) {
+      if ((type === "dropin" || type === "waitlist_claim") && scheduleId && date) {
         const { data } = await supabase
           .from("bookings")
           .select("id")

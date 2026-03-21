@@ -29,9 +29,11 @@ function isBookingClosed(slot: TimetableSlot): boolean {
 export default function SlotCard({
   slot,
   onBook,
+  onWaitlist,
 }: {
   slot: TimetableSlot;
   onBook: () => void;
+  onWaitlist?: () => void;
 }) {
   const barColor = colorMap[slot.class_slug] ?? "bg-gold";
   const isPast = isDatePast(slot.date);
@@ -46,6 +48,7 @@ export default function SlotCard({
   // Format time from "HH:MM:SS" to "HH:MM"
   const time = slot.start_time.slice(0, 5);
   const isBookable = !isFull && !isClosed && !isPast;
+  const canWaitlist = isFull && !isPast && !isClosed && !!onWaitlist;
 
   return (
     <div
@@ -54,9 +57,11 @@ export default function SlotCard({
           ? "opacity-40 cursor-default"
           : isBookable
             ? "hover:bg-cream cursor-pointer"
-            : "cursor-default"
+            : canWaitlist
+              ? "hover:bg-cream cursor-pointer"
+              : "cursor-default"
       }`}
-      onClick={isBookable ? onBook : undefined}
+      onClick={isBookable ? onBook : canWaitlist ? onWaitlist : undefined}
     >
       {/* Time */}
       <div className="min-w-[55px] text-right">
@@ -73,7 +78,7 @@ export default function SlotCard({
           {slot.class_name}
         </div>
         <div className="text-[0.7rem] text-warm-grey">
-          {slot.instructor_name} &middot; 10 spots
+          {slot.instructor_name} &middot; {slot.max_capacity} spots
         </div>
       </div>
 
@@ -103,6 +108,16 @@ export default function SlotCard({
           className="px-4 py-1.5 bg-sand text-warm-grey rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-not-allowed"
         >
           Past
+        </button>
+      ) : isFull && canWaitlist ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onWaitlist!();
+          }}
+          className="px-4 py-1.5 bg-ember/15 text-ember rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-pointer hover:bg-ember/25 transition-colors"
+        >
+          Waitlist
         </button>
       ) : isFull ? (
         <button

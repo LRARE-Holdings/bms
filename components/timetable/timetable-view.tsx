@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import SlotCard from "./slot-card";
 import BookingModal from "./booking-modal";
 import type { TimetableSlot } from "@/lib/types";
@@ -42,28 +42,37 @@ function isDayPast(weekStart: Date, dayOffset: number): boolean {
   return date < today;
 }
 
+async function fetchTimetable(weekStart: Date): Promise<TimetableSlot[]> {
+  const dateStr = weekStart.toISOString().split("T")[0];
+  const res = await fetch(`/api/timetable?week_start=${dateStr}`);
+  const data = await res.json();
+  return data.slots || [];
+}
+
 export default function TimetableView({ studioId }: { studioId: string }) {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().getDay();
-    return today === 0 ? 6 : today - 1; // Convert to 0=Mon
+    return today === 0 ? 6 : today - 1;
   });
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalSlot, setModalSlot] = useState<TimetableSlot | null>(null);
-
-  const fetchSlots = useCallback(async () => {
-    setLoading(true);
-    const dateStr = weekStart.toISOString().split("T")[0];
-    const res = await fetch(`/api/timetable?week_start=${dateStr}`);
-    const data = await res.json();
-    setSlots(data.slots || []);
-    setLoading(false);
-  }, [weekStart]);
+  const [modalMode, setModalMode] = useState<"book" | "waitlist">("book");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchSlots();
-  }, [fetchSlots]);
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Data fetch pattern: loading → fetch → resolve
+    setLoading(true);
+    fetchTimetable(weekStart).then((result) => {
+      if (!cancelled) {
+        setSlots(result);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [weekStart, refreshKey]);
 
   const changeWeek = (delta: number) => {
     const next = new Date(weekStart);
@@ -156,22 +165,30 @@ export default function TimetableView({ studioId }: { studioId: string }) {
               <SlotCard
                 key={slot.schedule_id}
                 slot={slot}
-                onBook={() => setModalSlot(slot)}
+                onBook={() => {
+                  setModalMode("book");
+                  setModalSlot(slot);
+                }}
+                onWaitlist={() => {
+                  setModalMode("waitlist");
+                  setModalSlot(slot);
+                }}
               />
             ))
           )}
         </div>
       </div>
 
-      {/* Booking modal */}
+      {/* Booking / waitlist modal */}
       {modalSlot && (
         <BookingModal
           slot={modalSlot}
           studioId={studioId}
+          mode={modalMode}
           onClose={() => setModalSlot(null)}
           onBooked={() => {
             setModalSlot(null);
-            fetchSlots();
+            setRefreshKey((k) => k + 1);
           }}
         />
       )}

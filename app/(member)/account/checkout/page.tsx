@@ -6,6 +6,7 @@ import {
   createDropinPaymentIntent,
   createPackPaymentIntent,
   createMembershipSubscription,
+  createWaitlistClaimPaymentIntent,
 } from "@/lib/checkout";
 import StripeProvider from "@/components/checkout/stripe-provider";
 import CheckoutForm from "@/components/checkout/checkout-form";
@@ -30,6 +31,7 @@ export default async function CheckoutPage({
   const scheduleId = params.schedule_id;
   const date = params.date;
   const tierId = params.tier_id;
+  const waitlistToken = params.waitlist_token;
 
   if (!type) {
     redirect("/account");
@@ -54,6 +56,18 @@ export default async function CheckoutPage({
     } else if (type === "pack") {
       if (!tierId) redirect("/account/packs");
       const result = await createPackPaymentIntent(user.id, tierId, studioId);
+      clientSecret = result.clientSecret;
+      stripeAccountId = result.stripeAccountId;
+      displayData = result.displayData;
+    } else if (type === "waitlist_claim") {
+      if (!scheduleId || !date || !waitlistToken) redirect("/account");
+      const result = await createWaitlistClaimPaymentIntent(
+        user.id,
+        scheduleId,
+        date,
+        studioId,
+        waitlistToken
+      );
       clientSecret = result.clientSecret;
       stripeAccountId = result.stripeAccountId;
       displayData = result.displayData;
@@ -107,7 +121,7 @@ export default async function CheckoutPage({
   }
 
   const backHref =
-    type === "dropin"
+    type === "dropin" || type === "waitlist_claim"
       ? "/account"
       : type === "pack"
         ? "/account/packs"

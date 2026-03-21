@@ -24,6 +24,12 @@ export default async function CheckoutSuccessPage({
       href: "/account/bookings",
       label: "View bookings",
     },
+    waitlist_claim: {
+      title: "Spot claimed",
+      message: "Your waitlist spot is confirmed. See you on the mat.",
+      href: "/account/bookings",
+      label: "View bookings",
+    },
     pack: {
       title: "Pack purchased",
       message: "Your class pack is ready to use.",

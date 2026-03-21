@@ -65,7 +65,7 @@ export default function CheckoutForm({
   // Payment confirmed by polling
   if (confirmed) {
     const returnHref =
-      type === "dropin"
+      type === "dropin" || type === "waitlist_claim"
         ? "/account/bookings"
         : type === "pack"
           ? "/account/packs"
@@ -91,7 +91,7 @@ export default function CheckoutForm({
           Payment confirmed
         </h2>
         <p className="text-[0.88rem] text-warm-grey mb-6">
-          {type === "dropin"
+          {type === "dropin" || type === "waitlist_claim"
             ? "Your class is booked."
             : type === "pack"
               ? "Your class pack is ready to use."
@@ -101,7 +101,7 @@ export default function CheckoutForm({
           href={returnHref}
           className="inline-block px-8 py-2.5 bg-gold text-cocoa rounded-full text-[0.78rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat transition-colors"
         >
-          {type === "dropin"
+          {type === "dropin" || type === "waitlist_claim"
             ? "View bookings"
             : type === "pack"
               ? "View packs"
@@ -135,7 +135,7 @@ export default function CheckoutForm({
         </h2>
         <p className="text-[0.84rem] text-warm-grey">
           Your payment was received. Confirming your{" "}
-          {type === "dropin"
+          {type === "dropin" || type === "waitlist_claim"
             ? "booking"
             : type === "pack"
               ? "class pack"

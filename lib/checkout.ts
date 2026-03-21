@@ -5,6 +5,7 @@ import {
   getStudioStripeAccount,
   getOrCreateStripeCustomer,
 } from "@/lib/stripe";
+import { isBookingClosed, getBookingCount, getClassCapacity } from "@/lib/booking-helpers";
 
 interface CheckoutResult {
   clientSecret: string;
@@ -49,24 +50,17 @@ export async function createDropinPaymentIntent(
   if (!cls) throw new Error("Class not found for this schedule slot");
 
   // Validate booking cutoff (30 min before class)
-  const [h, m] = slot.start_time.split(":").map(Number);
-  const classStart = new Date(date + "T00:00:00");
-  classStart.setHours(h, m, 0, 0);
-  const cutoff = new Date(classStart.getTime() - 30 * 60_000);
-  if (new Date() >= cutoff) {
+  if (isBookingClosed(slot.start_time, date)) {
     throw new Error("Bookings close 30 minutes before class starts");
   }
 
-  // Check class not full
-  const { count } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("schedule_id", scheduleId)
-    .eq("date", date)
-    .eq("status", "confirmed")
-    .eq("studio_id", studioId);
+  // Check class not full — use DB-sourced capacity
+  const [bookingCount, maxCapacity] = await Promise.all([
+    getBookingCount(supabase, scheduleId, date, studioId),
+    getClassCapacity(studioId, cls.id),
+  ]);
 
-  if (count !== null && count >= 10) {
+  if (bookingCount >= maxCapacity) {
     throw new Error("Class is full");
   }
 
@@ -111,7 +105,7 @@ export async function createDropinPaymentIntent(
       currency: "gbp",
       customer: customerId,
       metadata: {
-        type: "dropin",
+        type: "drop_in_class",
         schedule_id: scheduleId,
         date,
         profile_id: userId,
@@ -133,6 +127,124 @@ export async function createDropinPaymentIntent(
       name: cls.name,
       pricePounds: (cls.price_pence / 100).toFixed(2),
       description: `${cls.duration_mins} min class`,
+    },
+  };
+}
+
+/**
+ * Create a PaymentIntent for a waitlist claim (drop-in).
+ * Skips capacity check since the spot is held for the claimant.
+ * Includes waitlist claim_token in metadata so the webhook can mark the entry as claimed.
+ */
+export async function createWaitlistClaimPaymentIntent(
+  userId: string,
+  scheduleId: string,
+  date: string,
+  studioId: string,
+  claimToken: string
+): Promise<CheckoutResult> {
+  const supabase = createAdminClient();
+  const stripe = getStripe();
+
+  // Validate the waitlist entry
+  const { data: waitlistEntry } = await supabase
+    .from("waitlist")
+    .select("id, status, expires_at")
+    .eq("claim_token", claimToken)
+    .eq("studio_id", studioId)
+    .eq("profile_id", userId)
+    .single();
+
+  if (!waitlistEntry || waitlistEntry.status !== "offered") {
+    throw new Error("This waitlist offer is no longer valid");
+  }
+
+  if (!waitlistEntry.expires_at || new Date(waitlistEntry.expires_at) <= new Date()) {
+    throw new Error("This waitlist offer has expired");
+  }
+
+  // Fetch schedule + class details
+  const { data: slot, error: slotError } = await supabase
+    .from("schedule")
+    .select("id, start_time, classes(id, name, price_pence, stripe_price_id, duration_mins)")
+    .eq("id", scheduleId)
+    .eq("studio_id", studioId)
+    .single();
+
+  if (slotError || !slot) {
+    throw new Error("Schedule slot not found");
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cls = Array.isArray(slot.classes) ? slot.classes[0] : (slot.classes as any);
+  if (!cls) throw new Error("Class not found for this schedule slot");
+
+  // No capacity check — spot is held for the claimant
+
+  // Check no duplicate booking
+  const { data: existing } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("schedule_id", scheduleId)
+    .eq("profile_id", userId)
+    .eq("date", date)
+    .eq("status", "confirmed")
+    .single();
+
+  if (existing) {
+    throw new Error("You already have a booking for this class");
+  }
+
+  // Get studio's connected Stripe account
+  const stripeAccountId = await getStudioStripeAccount(studioId);
+  const stripeOpts = stripeAccountId
+    ? { stripeAccount: stripeAccountId }
+    : undefined;
+
+  // Get or create Stripe customer
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", userId)
+    .single();
+
+  const customerId = await getOrCreateStripeCustomer({
+    profileId: userId,
+    email: profile?.email || "",
+    fullName: profile?.full_name || null,
+    stripeAccountId,
+  });
+
+  // Create PaymentIntent with waitlist claim token in metadata
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: cls.price_pence,
+      currency: "gbp",
+      customer: customerId,
+      metadata: {
+        type: "waitlist_claim",
+        schedule_id: scheduleId,
+        date,
+        profile_id: userId,
+        studio_id: studioId,
+        waitlist_claim_token: claimToken,
+      },
+      automatic_payment_methods: { enabled: true },
+    },
+    stripeOpts
+  );
+
+  if (!paymentIntent.client_secret) {
+    throw new Error("Failed to create payment intent");
+  }
+
+  return {
+    clientSecret: paymentIntent.client_secret,
+    stripeAccountId,
+    displayData: {
+      name: cls.name,
+      pricePounds: (cls.price_pence / 100).toFixed(2),
+      description: `${cls.duration_mins} min class (waitlist claim)`,
     },
   };
 }
@@ -188,8 +300,8 @@ export async function createPackPaymentIntent(
       currency: "gbp",
       customer: customerId,
       metadata: {
-        type: "pack",
-        tier_id: tierId,
+        type: "pack_tier",
+        pack_tier_id: tierId,
         profile_id: userId,
         studio_id: studioId,
       },
@@ -275,7 +387,7 @@ export async function createMembershipSubscription(
       expand: ["latest_invoice.payment_intent"],
       metadata: {
         type: "membership",
-        tier_id: tierId,
+        membership_tier_id: tierId,
         profile_id: userId,
         studio_id: studioId,
       },
