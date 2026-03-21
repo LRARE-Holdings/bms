@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 const COOKIE_CONSENT_KEY = "bms_cookie_consent";
 
 export default function CookieBanner() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    // Only show if the user hasn't already responded
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (!consent) {
-      setVisible(true);
-    }
-  }, []);
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem(COOKIE_CONSENT_KEY);
+  });
 
   function accept() {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");

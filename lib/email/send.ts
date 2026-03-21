@@ -65,6 +65,32 @@ function formatDate(dateStr: string): string {
   });
 }
 
+/**
+ * Log email failures to the database for visibility.
+ * Falls back to console.error if DB insert fails.
+ */
+async function logEmailFailure(
+  type: string,
+  recipient: string,
+  error: unknown,
+  context: Record<string, string>
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Failed to send ${type} email to ${recipient}:`, message);
+
+  try {
+    const supabase = createAdminClient();
+    await supabase.from("email_failures").insert({
+      email_type: type,
+      recipient,
+      error_message: message.slice(0, 500),
+      context: JSON.stringify(context),
+    });
+  } catch {
+    // DB logging failed — console.error above is our fallback
+  }
+}
+
 export async function sendBookingConfirmation({
   profileId,
   studioId,
@@ -96,14 +122,28 @@ export async function sendBookingConfirmation({
       paymentMethod,
     });
 
-    await getResend().emails.send({
+    const { error } = await getResend().emails.send({
       from: `${config.studioName} <${config.from}>`,
       to: profile.email,
       subject,
       html,
     });
+
+    if (error) {
+      await logEmailFailure("booking_confirmation", profile.email, error, {
+        profileId,
+        studioId,
+        scheduleId,
+        date,
+      });
+    }
   } catch (err) {
-    console.error("Failed to send booking confirmation email:", err);
+    await logEmailFailure("booking_confirmation", profileId, err, {
+      profileId,
+      studioId,
+      scheduleId,
+      date,
+    });
   }
 }
 
@@ -145,14 +185,26 @@ export async function sendPackConfirmation({
       pricePounds: resolvedPrice,
     });
 
-    await getResend().emails.send({
+    const { error } = await getResend().emails.send({
       from: `${config.studioName} <${config.from}>`,
       to: profile.email,
       subject,
       html,
     });
+
+    if (error) {
+      await logEmailFailure("pack_confirmation", profile.email, error, {
+        profileId,
+        studioId,
+        packType,
+      });
+    }
   } catch (err) {
-    console.error("Failed to send pack confirmation email:", err);
+    await logEmailFailure("pack_confirmation", profileId, err, {
+      profileId,
+      studioId,
+      packType,
+    });
   }
 }
 
@@ -186,14 +238,28 @@ export async function sendBookingCancellation({
       creditRefunded,
     });
 
-    await getResend().emails.send({
+    const { error } = await getResend().emails.send({
       from: `${config.studioName} <${config.from}>`,
       to: profile.email,
       subject,
       html,
     });
+
+    if (error) {
+      await logEmailFailure("booking_cancellation", profile.email, error, {
+        profileId,
+        studioId,
+        scheduleId,
+        date,
+      });
+    }
   } catch (err) {
-    console.error("Failed to send booking cancellation email:", err);
+    await logEmailFailure("booking_cancellation", profileId, err, {
+      profileId,
+      studioId,
+      scheduleId,
+      date,
+    });
   }
 }
 
@@ -216,13 +282,23 @@ export async function sendWelcomeEmail({
       memberName: profile.name,
     });
 
-    await getResend().emails.send({
+    const { error } = await getResend().emails.send({
       from: `${config.studioName} <${config.from}>`,
       to: profile.email,
       subject,
       html,
     });
+
+    if (error) {
+      await logEmailFailure("welcome", profile.email, error, {
+        profileId,
+        studioId,
+      });
+    }
   } catch (err) {
-    console.error("Failed to send welcome email:", err);
+    await logEmailFailure("welcome", profileId, err, {
+      profileId,
+      studioId,
+    });
   }
 }

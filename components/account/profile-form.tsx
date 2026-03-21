@@ -14,6 +14,7 @@ export default function ProfileForm({
   const [fullName, setFullName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -21,16 +22,34 @@ export default function ProfileForm({
     e.preventDefault();
     setLoading(true);
     setSaved(false);
+    setError("");
+
+    const trimmed = fullName.trim();
+    if (!trimmed) {
+      setError("Name cannot be empty.");
+      setLoading(false);
+      return;
+    }
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setError("You must be logged in to update your profile.");
+      setLoading(false);
+      return;
+    }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
-      .update({ full_name: fullName })
+      .update({ full_name: trimmed })
       .eq("id", user.id);
+
+    if (updateError) {
+      setError("Failed to save changes. Please try again.");
+      setLoading(false);
+      return;
+    }
 
     setSaved(true);
     setLoading(false);
@@ -47,6 +66,9 @@ export default function ProfileForm({
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
+          required
+          minLength={1}
+          maxLength={100}
           className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors"
         />
       </div>
@@ -65,6 +87,17 @@ export default function ProfileForm({
           Contact us to change your email address.
         </p>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 p-3 bg-ember/8 border border-ember/20 rounded-xl">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ember shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p className="text-[0.8rem] text-ember">{error}</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <button

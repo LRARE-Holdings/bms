@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ProsePage from "@/components/ui/prose-page";
 
 export const metadata = {
@@ -26,7 +27,7 @@ export default function TermsPage() {
       <p>
         Class packs are available at various price points and validity periods.
         Current pricing is displayed on the{" "}
-        <a href="/#pricing">pricing page</a>. Class packs are non-refundable
+        <Link href="/#pricing" className="text-gold underline underline-offset-2 hover:text-cocoa transition-colors">pricing page</Link>. Class packs are non-refundable
         and non-transferable. Unused credits expire at the end of the validity
         period. Credits cannot be exchanged for cash.
       </p>

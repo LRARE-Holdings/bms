@@ -3,15 +3,6 @@
 import { useState } from "react";
 import AttendeeList from "./attendee-list";
 
-const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
 
 interface ScheduleSlot {
   id: string;

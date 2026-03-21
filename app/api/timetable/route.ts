@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioId } from "@/lib/studio-context";
 
+const DEFAULT_MAX_CAPACITY = 10;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const studioId = await getStudioId();
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
   } else {
     weekStart = new Date();
     const day = weekStart.getDay();
-    const diff = day === 0 ? -6 : 1 - day; // Monday
+    const diff = day === 0 ? -6 : 1 - day;
     weekStart.setDate(weekStart.getDate() + diff);
     weekStart.setHours(0, 0, 0, 0);
   }
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // Fetch schedule with class and instructor data
+  // Fetch schedule with class and instructor data (including max_capacity)
   const { data: scheduleSlots, error } = await supabase
     .from("schedule")
     .select(`
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
       day_of_week,
       start_time,
       end_time,
-      classes!inner(name, slug, duration_mins, price_pence),
+      classes!inner(name, slug, duration_mins, price_pence, max_capacity),
       instructors!inner(name)
     `)
     .eq("studio_id", studioId)
@@ -69,13 +71,13 @@ export async function GET(request: NextRequest) {
     const cls = slot.classes as Record<string, unknown>;
     const instructor = slot.instructors as Record<string, unknown>;
 
-    // Calculate the actual date for this slot in the current week
     const slotDate = new Date(weekStart);
     slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
     const dateStr = slotDate.toISOString().split("T")[0];
 
     const key = `${slot.id}_${dateStr}`;
     const bookingCount = bookingCounts[key] || 0;
+    const maxCapacity = (cls.max_capacity as number) ?? DEFAULT_MAX_CAPACITY;
 
     return {
       schedule_id: slot.id,
@@ -87,9 +89,10 @@ export async function GET(request: NextRequest) {
       class_slug: cls.slug,
       duration_mins: cls.duration_mins,
       price_pence: cls.price_pence,
+      max_capacity: maxCapacity,
       instructor_name: instructor.name,
       booking_count: bookingCount,
-      spots_remaining: 10 - bookingCount,
+      spots_remaining: maxCapacity - bookingCount,
     };
   });
 

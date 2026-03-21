@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
@@ -10,41 +11,85 @@ import TimetableView from "@/components/timetable/timetable-view";
 import HeroCanvas from "@/components/hero/hero-canvas";
 import type { Class, Instructor, PackTier, MembershipTier } from "@/lib/types";
 
-const classTagsMap: Record<string, string[]> = {
-  lucy: ["Hot Pilates", "Hot Yoga", "Beginners"],
-  amelia: ["Pilates Sculpt", "Cardio Pilates"],
-  takkiya: ["Baby & Me Yoga", "Beginners Pilates"],
+export const metadata: Metadata = {
+  title: "Burn Mat Studio | Pilates & Yoga in Stockton-on-Tees",
+  description:
+    "Boutique Pilates and yoga studio in Stockton-on-Tees. Hot Pilates, Hot Yoga, Sculpt, Cardio & more. Small classes, max 10. Book your mat today.",
+  openGraph: {
+    title: "Burn Mat Studio | Pilates & Yoga in Stockton-on-Tees",
+    description:
+      "Boutique Pilates and yoga studio. Hot Pilates, Hot Yoga, Sculpt, Cardio & more. Small classes. Book your mat today.",
+    type: "website",
+    url: "https://burnmatstudio.co.uk",
+    images: [{ url: "/studio.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Burn Mat Studio | Pilates & Yoga",
+    description:
+      "Boutique Pilates and yoga studio in Stockton-on-Tees. Book your mat today.",
+    images: ["/studio.png"],
+  },
 };
 
 export default async function HomePage() {
   const supabase = await createClient();
   const studioId = await getStudioId();
 
-  const [{ data: classes }, { data: instructors }, { data: packTiers }, { data: membershipTiers }] =
-    await Promise.all([
-      supabase
-        .from("classes")
-        .select("*")
-        .eq("studio_id", studioId)
-        .order("price_pence", { ascending: false }),
-      supabase
-        .from("instructors")
-        .select("*")
-        .eq("studio_id", studioId)
-        .order("created_at"),
-      supabase
-        .from("pack_tiers")
-        .select("*")
-        .eq("studio_id", studioId)
-        .eq("is_active", true)
-        .order("price_pence", { ascending: false }),
-      supabase
-        .from("membership_tiers")
-        .select("*")
-        .eq("studio_id", studioId)
-        .eq("is_active", true)
-        .order("price_pence", { ascending: true }),
-    ]);
+  const [
+    { data: classes },
+    { data: instructors },
+    { data: packTiers },
+    { data: membershipTiers },
+    { data: scheduleData },
+  ] = await Promise.all([
+    supabase
+      .from("classes")
+      .select("*")
+      .eq("studio_id", studioId)
+      .order("price_pence", { ascending: false }),
+    supabase
+      .from("instructors")
+      .select("*")
+      .eq("studio_id", studioId)
+      .order("created_at"),
+    supabase
+      .from("pack_tiers")
+      .select("*")
+      .eq("studio_id", studioId)
+      .eq("is_active", true)
+      .order("price_pence", { ascending: false }),
+    supabase
+      .from("membership_tiers")
+      .select("*")
+      .eq("studio_id", studioId)
+      .eq("is_active", true)
+      .order("price_pence", { ascending: true }),
+    supabase
+      .from("schedule")
+      .select("instructor_id, classes(name), instructors(id)")
+      .eq("studio_id", studioId)
+      .eq("is_active", true),
+  ]);
+
+  // Derive class tags per instructor from actual schedule data
+  const classTagsMap: Record<string, string[]> = {};
+  if (scheduleData) {
+    for (const slot of scheduleData) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cls = Array.isArray(slot.classes) ? slot.classes[0] : (slot.classes as any);
+      const instructorId = slot.instructor_id;
+      if (!cls?.name || !instructorId) continue;
+
+      if (!classTagsMap[instructorId]) classTagsMap[instructorId] = [];
+      if (!classTagsMap[instructorId].includes(cls.name)) {
+        classTagsMap[instructorId].push(cls.name);
+      }
+    }
+  }
+
+  const classCount = (classes as Class[])?.length ?? 0;
+  const instructorCount = (instructors as Instructor[])?.length ?? 0;
 
   return (
     <>
@@ -89,7 +134,7 @@ export default async function HomePage() {
             />
             <Image
               src="/Burn_Beige.svg"
-              alt="BURN"
+              alt="Burn Mat Studio"
               width={1200}
               height={280}
               className="relative w-[clamp(320px,80vw,900px)] h-auto"
@@ -167,7 +212,7 @@ export default async function HomePage() {
           </h2>
           <p className="text-[0.92rem] text-warm-grey leading-relaxed mb-2">
             Burn Mat Studio is a boutique Pilates and yoga studio in
-            Stockton-on-Tees, <br></br>founded by Lucy Healy.
+            Stockton-on-Tees, founded by Lucy Healy.
           </p>
           <p className="text-[0.92rem] text-warm-grey leading-relaxed mb-4">
             Whether you&apos;re brand new to pilates or a seasoned
@@ -176,7 +221,7 @@ export default async function HomePage() {
           </p>
           <div className="flex gap-10 pt-5 border-t border-sand mt-2">
             <div>
-              <strong className="font-display text-3xl font-normal text-cocoa block">6</strong>
+              <strong className="font-display text-3xl font-normal text-cocoa block">{classCount}</strong>
               <span className="text-[0.68rem] font-semibold tracking-[0.1em] uppercase text-warm-grey">Class types</span>
             </div>
             <div>
@@ -184,7 +229,7 @@ export default async function HomePage() {
               <span className="text-[0.68rem] font-semibold tracking-[0.1em] uppercase text-warm-grey">Max per class</span>
             </div>
             <div>
-              <strong className="font-display text-3xl font-normal text-cocoa block">3</strong>
+              <strong className="font-display text-3xl font-normal text-cocoa block">{instructorCount}</strong>
               <span className="text-[0.68rem] font-semibold tracking-[0.1em] uppercase text-warm-grey">Instructors</span>
             </div>
           </div>
@@ -226,7 +271,7 @@ export default async function HomePage() {
             <InstructorCard
               key={instructor.id}
               instructor={instructor}
-              classTags={classTagsMap[instructor.slug]}
+              classTags={classTagsMap[instructor.id]}
             />
           ))}
         </div>

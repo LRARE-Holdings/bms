@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendBookingConfirmation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
+import {
+  isBookingClosed,
+  getBookingCount,
+  getClassCapacity,
+} from "@/lib/booking-helpers";
+
+const schema = z.object({
+  schedule_id: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -14,13 +25,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { schedule_id, date } = await request.json();
-  if (!schedule_id || !date) {
+  const body = await request.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "schedule_id and date are required" },
+      { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+
+  const { schedule_id, date } = parsed.data;
 
   // Check user has an active membership at this studio
   const { data: membership } = await supabase
@@ -40,10 +54,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check booking cutoff (30 min before class)
+  // Fetch schedule slot with class info
   const { data: scheduleSlot } = await supabase
     .from("schedule")
-    .select("start_time")
+    .select("start_time, class_id")
     .eq("id", schedule_id)
     .eq("studio_id", studioId)
     .single();
@@ -55,27 +69,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const [h, m] = scheduleSlot.start_time.split(":").map(Number);
-  const classStart = new Date(date + "T00:00:00");
-  classStart.setHours(h, m, 0, 0);
-  const cutoff = new Date(classStart.getTime() - 30 * 60_000);
-  if (new Date() >= cutoff) {
+  if (isBookingClosed(scheduleSlot.start_time, date)) {
     return NextResponse.json(
       { error: "Bookings close 30 minutes before class starts" },
       { status: 400 }
     );
   }
 
-  // Check class not full
-  const { count } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("schedule_id", schedule_id)
-    .eq("date", date)
-    .eq("status", "confirmed")
-    .eq("studio_id", studioId);
+  const [bookingCount, maxCapacity] = await Promise.all([
+    getBookingCount(supabase, schedule_id, date, studioId),
+    getClassCapacity(studioId, scheduleSlot.class_id),
+  ]);
 
-  if (count !== null && count >= 10) {
+  if (bookingCount >= maxCapacity) {
     return NextResponse.json({ error: "Class is full" }, { status: 400 });
   }
 

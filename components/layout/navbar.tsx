@@ -2,29 +2,41 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
   { href: "#classes", label: "Classes" },
-    { href: "#team", label: "Team" },
+  { href: "#team", label: "Team" },
   { href: "#timetable", label: "Timetable" },
   { href: "#pricing", label: "Pricing" },
 ];
 
+function useScrollPastThreshold(threshold: number): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("scroll", cb, { passive: true });
+      return () => window.removeEventListener("scroll", cb);
+    },
+    () => window.scrollY > window.innerHeight * threshold,
+    () => false,
+  );
+}
+
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
 
   const isHomepage = pathname === "/";
+  const scrolledPast = useScrollPastThreshold(0.85);
+  const visible = !isHomepage || scrolledPast;
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
 
     const {
       data: { subscription },
@@ -34,26 +46,6 @@ export default function Navbar() {
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
-
-  useEffect(() => {
-    if (!isHomepage) {
-      setVisible(true);
-      return;
-    }
-
-    function handleScroll() {
-      setVisible(window.scrollY > window.innerHeight * 0.85);
-    }
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isHomepage]);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   function handleAnchorClick(e: React.MouseEvent, href: string) {
     e.preventDefault();

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendBookingCancellation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
+import { incrementPackCredit } from "@/lib/booking-helpers";
+
+const schema = z.object({
+  booking_id: z.string().uuid(),
+});
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -14,13 +20,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { booking_id } = await request.json();
-  if (!booking_id) {
+  const body = await request.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "booking_id is required" },
+      { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+
+  const { booking_id } = parsed.data;
 
   // Fetch the booking — user must own it
   const { data: booking, error } = await supabase
@@ -55,41 +64,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to cancel booking" }, { status: 500 });
   }
 
-  // If paid with pack credit, re-increment credits
+  // Re-credit pack if applicable
+  let creditRefunded = false;
   if (booking.payment_method === "pack_credit") {
-    // Find the user's oldest active pack to re-credit
-    const { data: packs } = await supabase
-      .from("class_packs")
-      .select("id, credits_remaining, credits_total")
-      .eq("profile_id", user.id)
-      .eq("studio_id", studioId)
-      .gt("expires_at", new Date().toISOString())
-      .order("purchased_at", { ascending: true })
-      .limit(1);
-
-    if (packs && packs.length > 0) {
-      const pack = packs[0];
-      // Only re-credit up to credits_total
-      const newCredits = Math.min(
-        pack.credits_remaining + 1,
-        pack.credits_total
+    creditRefunded = await incrementPackCredit(supabase, user.id, studioId);
+    if (!creditRefunded) {
+      console.warn(
+        `Failed to re-credit pack for booking ${booking_id} (user ${user.id}). ` +
+        `Pack may be expired or at max credits.`
       );
-      await supabase
-        .from("class_packs")
-        .update({ credits_remaining: newCredits })
-        .eq("id", pack.id);
     }
   }
-
-  // Membership and complimentary bookings — just cancel, no credit operations
 
   sendBookingCancellation({
     profileId: user.id,
     studioId,
     scheduleId: booking.schedule_id,
     date: booking.date,
-    creditRefunded: booking.payment_method === "pack_credit",
+    creditRefunded,
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, creditRefunded });
 }
