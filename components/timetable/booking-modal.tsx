@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
+import ClassIcon from "@/components/classes/class-icons";
 import type { TimetableSlot } from "@/lib/types";
 
 export default function BookingModal({
@@ -26,6 +28,7 @@ export default function BookingModal({
   const [alreadyOnWaitlist, setAlreadyOnWaitlist] = useState(false);
 
   const supabase = createClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     async function loadUser() {
@@ -111,6 +114,7 @@ export default function BookingModal({
       });
       const data = await res.json();
       if (res.ok) {
+        toast("Booking confirmed — see you on the mat");
         onBooked();
       } else {
         setError(data.error || "Failed to book class");
@@ -136,6 +140,7 @@ export default function BookingModal({
       });
       const data = await res.json();
       if (res.ok) {
+        toast("Booking confirmed — 1 credit used");
         onBooked();
       } else {
         setError(data.error || "Failed to book class");
@@ -206,13 +211,18 @@ export default function BookingModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-cocoa px-6 py-5">
-          <h3 className="font-display text-xl font-semibold text-wheat mb-0.5">
-            {slot.class_name}
-          </h3>
-          <p className="text-[0.75rem] text-warm-grey">
-            {dateDisplay} &middot; {time} &middot; {slot.duration_mins} min
-          </p>
+        <div className="bg-cocoa px-6 py-5 flex items-start gap-4">
+          <div className="text-wheat/40 shrink-0 mt-0.5 scale-[1.1]">
+            <ClassIcon slug={slot.class_slug} />
+          </div>
+          <div>
+            <h3 className="font-display text-xl font-semibold text-wheat mb-0.5">
+              {slot.class_name}
+            </h3>
+            <p className="text-[0.75rem] text-warm-grey">
+              {dateDisplay} &middot; {time} &middot; {slot.duration_mins} min
+            </p>
+          </div>
         </div>
 
         {/* Body */}
@@ -226,7 +236,7 @@ export default function BookingModal({
               </p>
               <a
                 href="/login"
-                className="inline-block px-8 py-2.5 bg-gold text-cocoa rounded-full text-[0.78rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat transition-colors"
+                className="inline-block px-8 py-2.5 bg-gold text-cocoa rounded-full text-[0.78rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat active:scale-95 transition-all"
               >
                 Log in
               </a>
@@ -277,7 +287,7 @@ export default function BookingModal({
                   </p>
                   <button
                     onClick={onClose}
-                    className="mt-4 px-8 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream transition-colors"
+                    className="mt-4 px-8 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
                   >
                     Close
                   </button>
@@ -297,14 +307,14 @@ export default function BookingModal({
                   <div className="flex gap-2.5 mt-2">
                     <button
                       onClick={onClose}
-                      className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream transition-colors"
+                      className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleJoinWaitlist}
                       disabled={loading}
-                      className="flex-1 py-2.5 rounded-full bg-ember text-white text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-ember/90 transition-colors disabled:opacity-60"
+                      className="flex-1 py-2.5 rounded-full bg-ember text-white text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-ember/90 active:scale-95 transition-all disabled:opacity-60"
                     >
                       {loading ? "Joining..." : "Join waitlist"}
                     </button>
@@ -371,7 +381,7 @@ export default function BookingModal({
               <div className="flex gap-2.5 mt-2">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream transition-colors"
+                  className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
                 >
                   Cancel
                 </button>
@@ -379,7 +389,7 @@ export default function BookingModal({
                   <button
                     onClick={handleMembershipBooking}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat transition-colors disabled:opacity-60"
+                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
                   >
                     {loading ? "Booking..." : "Book with membership"}
                   </button>
@@ -387,7 +397,7 @@ export default function BookingModal({
                   <button
                     onClick={handlePackBooking}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat transition-colors disabled:opacity-60"
+                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
                   >
                     {loading ? "Booking..." : "Use credit"}
                   </button>
@@ -395,7 +405,7 @@ export default function BookingModal({
                   <button
                     onClick={handlePayCheckout}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-cocoa text-wheat text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-gold hover:text-cocoa transition-colors disabled:opacity-60"
+                    className="flex-1 py-2.5 rounded-full bg-cocoa text-wheat text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-gold hover:text-cocoa active:scale-95 transition-all disabled:opacity-60"
                   >
                     {loading ? "Loading..." : `Pay ${priceDisplay}`}
                   </button>

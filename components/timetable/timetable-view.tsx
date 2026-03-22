@@ -42,6 +42,17 @@ function isDayPast(weekStart: Date, dayOffset: number): boolean {
   return date < today;
 }
 
+function isDayToday(weekStart: Date, dayOffset: number): boolean {
+  const date = new Date(weekStart);
+  date.setDate(date.getDate() + dayOffset);
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
 async function fetchTimetable(weekStart: Date): Promise<TimetableSlot[]> {
   const dateStr = weekStart.toISOString().split("T")[0];
   const res = await fetch(`/api/timetable?week_start=${dateStr}`);
@@ -112,6 +123,7 @@ export default function TimetableView({ studioId }: { studioId: string }) {
         <div className="flex border-b border-sand overflow-x-auto">
           {DAY_NAMES.map((name, i) => {
             const past = isDayPast(weekStart, i);
+            const isToday = isDayToday(weekStart, i);
             return (
               <button
                 key={i}
@@ -133,17 +145,20 @@ export default function TimetableView({ studioId }: { studioId: string }) {
                         : "text-warm-grey"
                   }`}
                 >
-                  {name}
+                  {isToday ? "Today" : name}
                 </span>
                 <span
                   className={`block text-base font-semibold mt-0.5 ${
-                    past ? "text-warm-grey" : "text-cocoa"
+                    past ? "text-warm-grey" : isToday && selectedDay !== i ? "text-gold" : "text-cocoa"
                   }`}
                 >
                   {formatDate(weekStart, i)}
                 </span>
                 {selectedDay === i && (
                   <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-gold rounded-sm" />
+                )}
+                {isToday && selectedDay !== i && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold" />
                 )}
               </button>
             );
@@ -153,27 +168,49 @@ export default function TimetableView({ studioId }: { studioId: string }) {
         {/* Slots */}
         <div className="p-2">
           {loading ? (
-            <div className="py-12 text-center text-warm-grey text-sm">
-              Loading schedule...
+            <div className="space-y-1 py-1">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl"
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                >
+                  <div className="min-w-[55px] space-y-1.5">
+                    <div className="h-3.5 w-10 rounded bg-sand/60 animate-shimmer" style={{ backgroundImage: "linear-gradient(90deg, transparent, rgba(223,208,165,0.3), transparent)", backgroundSize: "200% 100%" }} />
+                    <div className="h-2.5 w-7 rounded bg-sand/40 animate-shimmer" style={{ backgroundImage: "linear-gradient(90deg, transparent, rgba(223,208,165,0.3), transparent)", backgroundSize: "200% 100%", animationDelay: "0.15s" }} />
+                  </div>
+                  <div className="w-[3px] h-8 rounded-sm bg-sand/50" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 w-28 rounded bg-sand/60 animate-shimmer" style={{ backgroundImage: "linear-gradient(90deg, transparent, rgba(223,208,165,0.3), transparent)", backgroundSize: "200% 100%", animationDelay: "0.1s" }} />
+                    <div className="h-2.5 w-20 rounded bg-sand/40 animate-shimmer" style={{ backgroundImage: "linear-gradient(90deg, transparent, rgba(223,208,165,0.3), transparent)", backgroundSize: "200% 100%", animationDelay: "0.2s" }} />
+                  </div>
+                  <div className="h-7 w-16 rounded-full bg-sand/50 animate-shimmer" style={{ backgroundImage: "linear-gradient(90deg, transparent, rgba(223,208,165,0.3), transparent)", backgroundSize: "200% 100%", animationDelay: "0.25s" }} />
+                </div>
+              ))}
             </div>
           ) : daySlots.length === 0 ? (
             <div className="py-12 text-center text-warm-grey text-sm">
               No classes scheduled for this day.
             </div>
           ) : (
-            daySlots.map((slot) => (
-              <SlotCard
+            daySlots.map((slot, i) => (
+              <div
                 key={slot.schedule_id}
-                slot={slot}
-                onBook={() => {
-                  setModalMode("book");
-                  setModalSlot(slot);
-                }}
-                onWaitlist={() => {
-                  setModalMode("waitlist");
-                  setModalSlot(slot);
-                }}
-              />
+                className="opacity-0 animate-fade-up"
+                style={{ animationDelay: `${i * 0.06}s`, animationDuration: "0.4s" }}
+              >
+                <SlotCard
+                  slot={slot}
+                  onBook={() => {
+                    setModalMode("book");
+                    setModalSlot(slot);
+                  }}
+                  onWaitlist={() => {
+                    setModalMode("waitlist");
+                    setModalSlot(slot);
+                  }}
+                />
+              </div>
             ))
           )}
         </div>

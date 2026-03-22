@@ -115,7 +115,7 @@ export default function SlotCard({
             e.stopPropagation();
             onWaitlist!();
           }}
-          className="px-4 py-1.5 bg-ember/15 text-ember rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-pointer hover:bg-ember/25 transition-colors"
+          className="px-4 py-1.5 bg-ember/15 text-ember rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-pointer hover:bg-ember/25 active:scale-95 transition-all"
         >
           Waitlist
         </button>
@@ -145,7 +145,7 @@ export default function SlotCard({
             e.stopPropagation();
             onBook();
           }}
-          className="px-4 py-1.5 bg-cocoa text-wheat rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-pointer hover:bg-gold hover:text-cocoa transition-colors"
+          className="px-4 py-1.5 bg-cocoa text-wheat rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-pointer hover:bg-gold hover:text-cocoa active:scale-95 transition-all"
         >
           Book
         </button>

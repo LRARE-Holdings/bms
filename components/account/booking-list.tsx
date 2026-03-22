@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 
 export interface BookingRow {
   id: string;
@@ -26,6 +27,7 @@ export default function BookingList({
 }) {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   async function handleCancel(bookingId: string) {
     if (!confirm("Cancel this booking?")) return;
@@ -38,22 +40,31 @@ export default function BookingList({
     });
 
     if (res.ok) {
+      toast("Booking cancelled");
       router.refresh();
     } else {
-      alert("Failed to cancel booking. Please try again.");
+      toast("Failed to cancel booking. Please try again.", "error");
     }
     setCancellingId(null);
   }
 
   if (bookings.length === 0) {
     return (
-      <div className="bg-white border border-sand rounded-2xl p-8 text-center">
-        <p className="text-[0.88rem] text-warm-grey">{emptyMessage}</p>
+      <div className="bg-white border border-sand rounded-2xl p-10 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+            <circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <p className="text-[0.92rem] font-semibold text-cocoa mb-1">Your mat is waiting</p>
+        <p className="text-[0.82rem] text-warm-grey mb-4">{emptyMessage}</p>
         <a
           href="/account"
-          className="inline-block mt-3 text-[0.78rem] font-semibold text-gold hover:underline"
+          className="inline-block px-6 py-2 bg-gold text-cocoa rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat active:scale-95 transition-all"
         >
-          Browse the timetable &rarr;
+          Browse timetable
         </a>
       </div>
     );
@@ -61,7 +72,7 @@ export default function BookingList({
 
   return (
     <div className="bg-white border border-sand rounded-2xl overflow-hidden divide-y divide-sand">
-      {bookings.map((booking) => {
+      {bookings.map((booking, i) => {
         const dateObj = new Date(booking.date + "T00:00:00");
         const dateStr = dateObj.toLocaleDateString("en-GB", {
           weekday: "short",
@@ -73,7 +84,8 @@ export default function BookingList({
         return (
           <div
             key={booking.id}
-            className="flex items-center gap-4 px-5 py-3.5"
+            className="flex items-center gap-4 px-5 py-3.5 opacity-0 animate-fade-up"
+            style={{ animationDelay: `${i * 0.05}s`, animationDuration: "0.35s" }}
           >
             {/* Date */}
             <div className="min-w-[70px]">

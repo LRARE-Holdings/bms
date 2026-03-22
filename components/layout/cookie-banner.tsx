@@ -27,7 +27,7 @@ export default function CookieBanner() {
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4"
+      className="fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4 animate-slide-up"
     >
       <div className="mx-auto max-w-xl rounded-2xl border border-sand bg-white/95 backdrop-blur-sm shadow-lg px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
         <p className="text-[0.8rem] leading-relaxed text-slate flex-1">
@@ -44,13 +44,13 @@ export default function CookieBanner() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={decline}
-            className="px-3.5 py-1.5 rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:text-cocoa border border-sand hover:border-cocoa/20 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:text-cocoa border border-sand hover:border-cocoa/20 active:scale-95 transition-all cursor-pointer"
           >
             Decline
           </button>
           <button
             onClick={accept}
-            className="px-3.5 py-1.5 rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase bg-cocoa text-wheat hover:bg-gold hover:text-cocoa transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase bg-cocoa text-wheat hover:bg-gold hover:text-cocoa active:scale-95 transition-all cursor-pointer"
           >
             Accept
           </button>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 
 export default function ProfileForm({
   initialName,
@@ -13,15 +14,14 @@ export default function ProfileForm({
 }) {
   const [fullName, setFullName] = useState(initialName);
   const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const supabase = createClient();
+  const { toast } = useToast();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setSaved(false);
     setError("");
 
     const trimmed = fullName.trim();
@@ -51,7 +51,7 @@ export default function ProfileForm({
       return;
     }
 
-    setSaved(true);
+    toast("Profile updated");
     setLoading(false);
     router.refresh();
   }
@@ -103,13 +103,10 @@ export default function ProfileForm({
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2.5 bg-gold text-cocoa rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat transition-colors disabled:opacity-60"
+          className="px-6 py-2.5 bg-gold text-cocoa rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
         >
           {loading ? "Saving..." : "Save changes"}
         </button>
-        {saved && (
-          <span className="text-[0.78rem] text-gold font-medium">Saved!</span>
-        )}
       </div>
     </form>
   );

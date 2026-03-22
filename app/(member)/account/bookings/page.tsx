@@ -5,6 +5,7 @@ import { requireAuth, getStudioId } from "@/lib/auth";
 import BookingList, { type BookingRow } from "@/components/account/booking-list";
 import WaitlistList, { type WaitlistRow } from "@/components/account/waitlist-list";
 import AccountHeader from "@/components/account/account-header";
+import MemberStats from "@/components/account/member-stats";
 
 export const metadata = {
   title: "My Bookings | Burn Mat Studio",
@@ -16,8 +17,14 @@ export default async function BookingsPage() {
   const studioId = await getStudioId();
   const today = new Date().toISOString().split("T")[0];
 
-  const [{ data: upcomingBookings }, { data: pastBookings }, { data: waitlistEntries }] =
-    await Promise.all([
+  const [
+    { data: upcomingBookings },
+    { data: pastBookings },
+    { data: waitlistEntries },
+    { count: totalClassCount },
+    { data: allPastDates },
+    { data: activePacks },
+  ] = await Promise.all([
       supabase
         .from("bookings")
         .select(
@@ -79,7 +86,106 @@ export default async function BookingsPage() {
         .in("status", ["waiting", "offered"])
         .gte("date", today)
         .order("date", { ascending: true }),
+      // Total confirmed bookings (past)
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("profile_id", user.id)
+        .eq("studio_id", studioId)
+        .eq("status", "confirmed")
+        .lt("date", today),
+      // All past booking dates for streak calculation
+      supabase
+        .from("bookings")
+        .select("date")
+        .eq("profile_id", user.id)
+        .eq("studio_id", studioId)
+        .eq("status", "confirmed")
+        .lt("date", today)
+        .order("date", { ascending: false })
+        .limit(52),
+      // Active packs for credit stats
+      supabase
+        .from("class_packs")
+        .select("credits_remaining, expires_at")
+        .eq("profile_id", user.id)
+        .eq("studio_id", studioId)
+        .gt("credits_remaining", 0)
+        .gt("expires_at", new Date().toISOString()),
     ]);
+
+  // Calculate week streak from past booking dates
+  function calculateWeekStreak(dates: { date: string }[]): number {
+    if (!dates || dates.length === 0) return 0;
+
+    const uniqueWeeks = new Set<string>();
+    for (const { date } of dates) {
+      const d = new Date(date + "T00:00:00");
+      // Get Monday of that week
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      uniqueWeeks.add(d.toISOString().split("T")[0]);
+    }
+
+    const sortedWeeks = Array.from(uniqueWeeks).sort().reverse();
+    let streak = 0;
+
+    // Check if the most recent week is this week or last week
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentMonday = new Date(now);
+    currentMonday.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    currentMonday.setHours(0, 0, 0, 0);
+    const currentWeekStr = currentMonday.toISOString().split("T")[0];
+
+    const lastMonday = new Date(currentMonday);
+    lastMonday.setDate(lastMonday.getDate() - 7);
+    const lastWeekStr = lastMonday.toISOString().split("T")[0];
+
+    // Start counting from the most recent booking week
+    if (sortedWeeks[0] !== currentWeekStr && sortedWeeks[0] !== lastWeekStr) {
+      return 0;
+    }
+
+    let expectedWeek = new Date(sortedWeeks[0] + "T00:00:00");
+    for (const week of sortedWeeks) {
+      const weekDate = new Date(week + "T00:00:00");
+      if (weekDate.getTime() === expectedWeek.getTime()) {
+        streak++;
+        expectedWeek.setDate(expectedWeek.getDate() - 7);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  const totalClasses = totalClassCount ?? 0;
+  const weekStreak = calculateWeekStreak(allPastDates ?? []);
+
+  const creditsRemaining = (activePacks ?? []).reduce(
+    (sum, p) => sum + p.credits_remaining, 0
+  );
+
+  // Find soonest expiring pack
+  const soonestExpiry = (activePacks ?? [])
+    .map((p) => new Date(p.expires_at))
+    .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+
+  const daysUntilExpiry = soonestExpiry
+    ? Math.ceil((soonestExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  const creditsExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 14
+    ? (activePacks ?? [])
+        .filter((p) => {
+          const d = Math.ceil((new Date(p.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          return d <= 14;
+        })
+        .reduce((sum, p) => sum + p.credits_remaining, 0)
+    : 0;
 
   // Normalize booking rows — Supabase may return nested joins as arrays
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,6 +237,14 @@ export default async function BookingsPage() {
         eyebrow="My bookings"
         title="Upcoming"
         subtitle="Your confirmed classes. Cancel up to 24 hours before the class starts."
+      />
+
+      <MemberStats
+        totalClasses={totalClasses}
+        weekStreak={weekStreak}
+        creditsRemaining={creditsRemaining}
+        creditsExpiringSoon={creditsExpiringSoon}
+        daysUntilExpiry={daysUntilExpiry}
       />
 
       <BookingList

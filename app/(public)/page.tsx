@@ -249,8 +249,14 @@ export default async function HomePage() {
           small groups of 10 or fewer.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(classes as Class[])?.map((cls) => (
-            <ClassCard key={cls.id} cls={cls} />
+          {(classes as Class[])?.map((cls, i) => (
+            <div
+              key={cls.id}
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: `${i * 0.08}s`, animationDuration: "0.5s" }}
+            >
+              <ClassCard cls={cls} />
+            </div>
           ))}
         </div>
       </section>
@@ -267,12 +273,17 @@ export default async function HomePage() {
           Every class is led by a qualified, passionate instructor who knows your name.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {(instructors as Instructor[])?.map((instructor) => (
-            <InstructorCard
+          {(instructors as Instructor[])?.map((instructor, i) => (
+            <div
               key={instructor.id}
-              instructor={instructor}
-              classTags={classTagsMap[instructor.id]}
-            />
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: `${i * 0.1}s`, animationDuration: "0.5s" }}
+            >
+              <InstructorCard
+                instructor={instructor}
+                classTags={classTagsMap[instructor.id]}
+              />
+            </div>
           ))}
         </div>
       </section>
