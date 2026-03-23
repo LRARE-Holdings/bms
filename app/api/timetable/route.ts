@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       day_of_week,
       start_time,
       end_time,
-      classes!inner(name, slug, duration_mins, price_pence, max_capacity),
+      classes!inner(name, slug, duration_mins, price_pence, capacity),
       instructors!inner(name)
     `)
     .eq("studio_id", studioId)
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     const key = `${slot.id}_${dateStr}`;
     const bookingCount = bookingCounts[key] || 0;
-    const maxCapacity = (cls.max_capacity as number) ?? DEFAULT_MAX_CAPACITY;
+    const maxCapacity = (cls.capacity as number) ?? DEFAULT_MAX_CAPACITY;
 
     return {
       schedule_id: slot.id,

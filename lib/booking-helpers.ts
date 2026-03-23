@@ -14,12 +14,12 @@ export async function getClassCapacity(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("classes")
-    .select("max_capacity")
+    .select("capacity")
     .eq("id", classId)
     .eq("studio_id", studioId)
     .single();
 
-  return data?.max_capacity ?? DEFAULT_MAX_CAPACITY;
+  return data?.capacity ?? DEFAULT_MAX_CAPACITY;
 }
 
 /**
