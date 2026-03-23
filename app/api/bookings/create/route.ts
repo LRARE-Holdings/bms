@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
 import {
@@ -56,8 +57,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const admin = createAdminClient();
+
   const [bookingCount, maxCapacity] = await Promise.all([
-    getBookingCount(supabase, schedule_id, date, studioId),
+    getBookingCount(admin, schedule_id, date, studioId),
     getClassCapacity(studioId, scheduleSlot.class_id),
   ]);
 
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Check no duplicate booking
-  const { data: existingBooking } = await supabase
+  const { data: existingBooking } = await admin
     .from("bookings")
     .select("id")
     .eq("schedule_id", schedule_id)
@@ -83,13 +86,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Atomically decrement pack credits (optimistic lock prevents race conditions)
-  const packResult = await decrementPackCredit(supabase, user.id, studioId);
+  const packResult = await decrementPackCredit(admin, user.id, studioId);
   if (!packResult) {
     return NextResponse.json({ error: "No credits available" }, { status: 400 });
   }
 
   // Create booking
-  const { error: bookingError } = await supabase.from("bookings").insert({
+  const { error: bookingError } = await admin.from("bookings").insert({
     studio_id: studioId,
     schedule_id,
     profile_id: user.id,
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
 
   if (bookingError) {
     // Roll back credit
-    await supabase
+    await admin
       .from("class_packs")
       .update({ credits_remaining: packResult.previousCredits })
       .eq("id", packResult.packId);
