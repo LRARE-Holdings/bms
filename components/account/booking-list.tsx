@@ -108,7 +108,15 @@ export default function BookingList({
 
             {/* Payment badge */}
             <span className="text-[0.62rem] font-semibold tracking-[0.05em] uppercase px-2.5 py-0.5 rounded-full bg-cream text-warm-grey hidden sm:inline">
-              {booking.payment_method === "pack_credit" ? "Pack" : "Drop-in"}
+              {booking.payment_method === "pack_credit"
+                ? "Pack"
+                : booking.payment_method === "membership"
+                  ? "Membership"
+                  : booking.payment_method === "complimentary"
+                    ? "Free"
+                    : booking.payment_method === "birthday"
+                      ? "Birthday"
+                      : "Drop-in"}
             </span>
 
             {/* Status */}

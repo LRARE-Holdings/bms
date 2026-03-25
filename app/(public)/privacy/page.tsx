@@ -17,6 +17,7 @@ export default function PrivacyPage() {
       <h2>What We Collect</h2>
       <ul>
         <li><strong>Account information:</strong> name, email address, and password when you create an account.</li>
+        <li><strong>Date of birth:</strong> collected to verify you are 18 or over, and to send you a complimentary birthday class each year.</li>
         <li><strong>Booking data:</strong> class selections, dates, and attendance history.</li>
         <li><strong>Payment data:</strong> processed securely by Stripe. We do not store card details.</li>
         <li><strong>Session data:</strong> authentication cookies to keep you logged in.</li>

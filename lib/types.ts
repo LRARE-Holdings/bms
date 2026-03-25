@@ -1,6 +1,6 @@
 export type UserRole = "member" | "staff" | "admin";
 export type BookingStatus = "confirmed" | "cancelled";
-export type PaymentMethod = "stripe" | "pack_credit" | "complimentary" | "membership";
+export type PaymentMethod = "stripe" | "pack_credit" | "complimentary" | "membership" | "birthday";
 
 export interface Studio {
   id: string;
@@ -23,6 +23,7 @@ export interface Profile {
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
+  date_of_birth: string | null;
   stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
@@ -169,6 +170,19 @@ export interface BookingWithDetails extends Booking {
 
 export interface ClassPackWithTier extends ClassPack {
   pack_tiers: { name: string; credits: number } | null;
+}
+
+export type BirthdayTokenStatus = "active" | "used" | "expired";
+
+export interface BirthdayToken {
+  id: string;
+  studio_id: string;
+  profile_id: string;
+  token: string;
+  birthday_year: number;
+  status: BirthdayTokenStatus;
+  expires_at: string;
+  created_at: string;
 }
 
 export type WaitlistStatus = "waiting" | "offered" | "claimed" | "expired" | "cancelled";

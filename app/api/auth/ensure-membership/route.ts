@@ -31,6 +31,15 @@ export async function POST() {
       role: "member",
     });
 
+    // Save date_of_birth from signup metadata to profile
+    const dob = user.user_metadata?.date_of_birth;
+    if (dob) {
+      await adminClient
+        .from("profiles")
+        .update({ date_of_birth: dob })
+        .eq("id", user.id);
+    }
+
     sendWelcomeEmail({ profileId: user.id, studioId });
   }
 

@@ -6,7 +6,7 @@ interface BookingConfirmationData {
   date: string;
   time: string;
   instructor: string;
-  paymentMethod: "stripe" | "pack_credit" | "membership" | "complimentary";
+  paymentMethod: "stripe" | "pack_credit" | "membership" | "complimentary" | "birthday";
 }
 
 export function bookingConfirmationEmail(data: BookingConfirmationData) {
@@ -17,7 +17,9 @@ export function bookingConfirmationEmail(data: BookingConfirmationData) {
         ? "Booked with your membership."
         : data.paymentMethod === "complimentary"
           ? "This class is complimentary."
-          : "Payment received via card.";
+          : data.paymentMethod === "birthday"
+            ? "This class is your birthday treat from Burn Mat Studio. Happy birthday!"
+            : "Payment received via card.";
 
   const content = `
     <h2 style="margin:0 0 8px;font-size:20px;font-weight:600;color:${BRAND.cocoa};">Booking confirmed</h2>

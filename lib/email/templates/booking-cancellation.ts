@@ -14,7 +14,9 @@ export function bookingCancellationEmail(data: BookingCancellationData) {
     ? "Your class pack credit has been refunded."
     : data.paymentMethod === "complimentary"
       ? "This was a complimentary class \u2014 no refund is applicable."
-      : data.paymentMethod === "membership"
+      : data.paymentMethod === "birthday"
+        ? "This was your birthday treat \u2014 no refund is applicable."
+        : data.paymentMethod === "membership"
         ? "This class was booked with your membership."
         : "If you paid by card, please contact us regarding refund options.";
 

@@ -8,11 +8,14 @@ import { useToast } from "@/components/ui/toast";
 export default function ProfileForm({
   initialName,
   email,
+  initialDateOfBirth,
 }: {
   initialName: string;
   email: string;
+  initialDateOfBirth: string;
 }) {
   const [fullName, setFullName] = useState(initialName);
+  const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -31,6 +34,21 @@ export default function ProfileForm({
       return;
     }
 
+    if (dateOfBirth) {
+      const birth = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        setError("You must be 18 or over.");
+        setLoading(false);
+        return;
+      }
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -42,7 +60,10 @@ export default function ProfileForm({
 
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ full_name: trimmed })
+      .update({
+        full_name: trimmed,
+        ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
+      })
       .eq("id", user.id);
 
     if (updateError) {
@@ -85,6 +106,22 @@ export default function ProfileForm({
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">
           Contact us to change your email address.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-[0.72rem] font-semibold tracking-[0.08em] uppercase text-warm-grey mb-1.5">
+          Date of birth
+        </label>
+        <input
+          type="date"
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          max={new Date().toISOString().split("T")[0]}
+          className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors"
+        />
+        <p className="text-[0.68rem] text-warm-grey mt-1">
+          We&apos;ll send you a free class on your birthday each year.
         </p>
       </div>
 

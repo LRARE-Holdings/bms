@@ -9,6 +9,7 @@ export default function SignupForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
@@ -17,10 +18,27 @@ export default function SignupForm() {
   const router = useRouter();
   const supabase = createClient();
 
+  function getAge(dob: string): number {
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    if (dateOfBirth && getAge(dateOfBirth) < 18) {
+      setError("You must be 18 or over to create an account.");
+      setLoading(false);
+      return;
+    }
 
     const studioId = process.env.NEXT_PUBLIC_STUDIO_ID;
 
@@ -28,7 +46,11 @@ export default function SignupForm() {
       email,
       password,
       options: {
-        data: { full_name: fullName, ...(studioId && { studio_id: studioId }) },
+        data: {
+          full_name: fullName,
+          ...(studioId && { studio_id: studioId }),
+          ...(dateOfBirth && { date_of_birth: dateOfBirth }),
+        },
       },
     });
 
@@ -152,6 +174,24 @@ export default function SignupForm() {
             )}
           </button>
         </div>
+      </div>
+
+      {/* Date of birth */}
+      <div>
+        <label className="block text-[0.72rem] font-semibold tracking-[0.08em] uppercase text-warm-grey mb-1.5">
+          Date of birth
+        </label>
+        <input
+          type="date"
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          required
+          max={new Date().toISOString().split("T")[0]}
+          className="w-full px-4 py-3 bg-white border border-sand rounded-xl text-[0.88rem] text-cocoa placeholder:text-warm-grey/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all"
+        />
+        <p className="text-[0.68rem] text-warm-grey mt-1">
+          You must be 18 or over to sign up. We&apos;ll also send you a free class on your birthday each year.
+        </p>
       </div>
 
       {/* Policy agreement checkbox */}

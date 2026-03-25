@@ -4,6 +4,7 @@ import { bookingConfirmationEmail } from "./templates/booking-confirmation";
 import { packConfirmationEmail } from "./templates/pack-confirmation";
 import { bookingCancellationEmail } from "./templates/booking-cancellation";
 import { welcomeEmail } from "./templates/welcome";
+import { birthdayEmail } from "./templates/birthday";
 
 async function getStudioEmailConfig(studioId: string) {
   const supabase = createAdminClient();
@@ -102,7 +103,7 @@ export async function sendBookingConfirmation({
   studioId: string;
   scheduleId: string;
   date: string;
-  paymentMethod: "stripe" | "pack_credit" | "membership" | "complimentary";
+  paymentMethod: "stripe" | "pack_credit" | "membership" | "complimentary" | "birthday";
 }) {
   try {
     const [config, profile, details] = await Promise.all([
@@ -302,6 +303,60 @@ export async function sendWelcomeEmail({
     await logEmailFailure("welcome", profileId, err, {
       profileId,
       studioId,
+    });
+  }
+}
+
+export async function sendBirthdayEmail({
+  profileId,
+  studioId,
+  token,
+  expiresAt,
+}: {
+  profileId: string;
+  studioId: string;
+  token: string;
+  expiresAt: string;
+}) {
+  try {
+    const [config, profile] = await Promise.all([
+      getStudioEmailConfig(studioId),
+      getProfileEmail(profileId),
+    ]);
+
+    if (!profile.email) return;
+
+    const expiryFormatted = new Date(expiresAt).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const { subject, html } = birthdayEmail({
+      memberName: profile.name,
+      token,
+      expiresAt: expiryFormatted,
+    });
+
+    const { error } = await getResend().emails.send({
+      from: `${config.studioName} <${config.from}>`,
+      to: profile.email,
+      subject,
+      html,
+    });
+
+    if (error) {
+      await logEmailFailure("birthday", profile.email, error, {
+        profileId,
+        studioId,
+        token,
+      });
+    }
+  } catch (err) {
+    await logEmailFailure("birthday", profileId, err, {
+      profileId,
+      studioId,
+      token,
     });
   }
 }

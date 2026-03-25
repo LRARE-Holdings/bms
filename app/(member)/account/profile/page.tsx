@@ -15,7 +15,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email")
+    .select("full_name, email, date_of_birth")
     .eq("id", user.id)
     .single();
 
@@ -29,6 +29,7 @@ export default async function ProfilePage() {
       <ProfileForm
         initialName={profile?.full_name || ""}
         email={profile?.email || ""}
+        initialDateOfBirth={profile?.date_of_birth || ""}
       />
     </section>
   );

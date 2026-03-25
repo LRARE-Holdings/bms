@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import ClassIcon from "@/components/classes/class-icons";
@@ -23,6 +24,8 @@ export default function BookingModal({
   const [packCredits, setPackCredits] = useState<number | null>(null);
   const [hasMembership, setHasMembership] = useState(false);
   const [hasFreeClass, setHasFreeClass] = useState(false);
+  const [hasBirthdayToken, setHasBirthdayToken] = useState(false);
+  const [birthdayToken, setBirthdayToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [waitlistSuccess, setWaitlistSuccess] = useState<number | null>(null);
@@ -30,6 +33,7 @@ export default function BookingModal({
 
   const supabase = createClient();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     async function loadUser() {
@@ -82,6 +86,24 @@ export default function BookingModal({
         const alreadyUsed = smResult.data?.free_class_used ?? true;
         setHasFreeClass(offerEnabled && !alreadyUsed);
 
+        // Check for birthday token in URL
+        const tokenParam = searchParams.get("birthday_token");
+        if (tokenParam) {
+          const { data: bToken } = await supabase
+            .from("birthday_tokens")
+            .select("id, token, status, expires_at, profile_id")
+            .eq("token", tokenParam)
+            .eq("profile_id", user.id)
+            .eq("status", "active")
+            .gt("expires_at", new Date().toISOString())
+            .maybeSingle();
+
+          if (bToken) {
+            setHasBirthdayToken(true);
+            setBirthdayToken(bToken.token);
+          }
+        }
+
         // Check existing waitlist entry if in waitlist mode
         if (mode === "waitlist") {
           const { data: existingWaitlist } = await supabase
@@ -101,7 +123,7 @@ export default function BookingModal({
       }
     }
     loadUser();
-  }, [supabase, studioId]);
+  }, [supabase, studioId, searchParams]);
 
   const priceDisplay =
     slot.price_pence % 100 === 0
@@ -194,6 +216,33 @@ export default function BookingModal({
       const data = await res.json();
       if (res.ok) {
         toast("Booking confirmed \u2014 your first class is on us!");
+        onBooked();
+      } else {
+        setError(data.error || "Failed to book class");
+        setLoading(false);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  async function handleBirthdayBooking() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/bookings/birthday", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schedule_id: slot.schedule_id,
+          date: slot.date,
+          token: birthdayToken,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast("Booking confirmed \u2014 happy birthday!");
         onBooked();
       } else {
         setError(data.error || "Failed to book class");
@@ -391,8 +440,39 @@ export default function BookingModal({
                 <p className="text-[0.8rem] text-ember mt-3">{error}</p>
               )}
 
+              {/* Birthday treat — shown as primary when token is valid */}
+              {hasBirthdayToken && (
+                <div className="mt-3 space-y-2.5">
+                  <button
+                    onClick={handleBirthdayBooking}
+                    disabled={loading}
+                    className="w-full flex justify-between items-center bg-gold/[0.12] border border-gold/30 px-4 py-3 rounded-xl hover:bg-gold/[0.2] active:scale-[0.98] transition-all disabled:opacity-60 group"
+                  >
+                    <div className="text-left">
+                      <span className="block text-[0.82rem] font-semibold text-cocoa">
+                        Birthday treat
+                      </span>
+                      <span className="block text-[0.68rem] text-warm-grey">
+                        Your free birthday class
+                      </span>
+                    </div>
+                    <span className="text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-gold group-hover:text-cocoa transition-colors">
+                      {loading ? "Booking..." : "Book free"}
+                    </span>
+                  </button>
+
+                  {/* Cancel */}
+                  <button
+                    onClick={onClose}
+                    className="w-full py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
               {/* Membership — single action */}
-              {hasMembership && (
+              {!hasBirthdayToken && hasMembership && (
                 <div className="mt-3 space-y-2.5">
                   <div className="flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl">
                     <span className="text-[0.8rem] text-cocoa">Membership</span>
@@ -416,8 +496,8 @@ export default function BookingModal({
                 </div>
               )}
 
-              {/* Free first class — shown as primary when eligible (no membership) */}
-              {!hasMembership && hasFreeClass && (
+              {/* Free first class — shown as primary when eligible (no membership, no birthday token) */}
+              {!hasBirthdayToken && !hasMembership && hasFreeClass && (
                 <div className="mt-3 space-y-2.5">
                   <button
                     onClick={handleFreeClassBooking}
@@ -494,8 +574,8 @@ export default function BookingModal({
                 </div>
               )}
 
-              {/* Non-membership, no free class — show credit and drop-in options */}
-              {!hasMembership && !hasFreeClass && (
+              {/* Non-membership, no free class, no birthday — show credit and drop-in options */}
+              {!hasBirthdayToken && !hasMembership && !hasFreeClass && (
                 <div className="mt-3 space-y-2.5">
                   {/* Pack credit option */}
                   {packCredits !== null && packCredits > 0 && (
