@@ -28,10 +28,12 @@ function isBookingClosed(slot: TimetableSlot): boolean {
 
 export default function SlotCard({
   slot,
+  isBooked = false,
   onBook,
   onWaitlist,
 }: {
   slot: TimetableSlot;
+  isBooked?: boolean;
   onBook: () => void;
   onWaitlist?: () => void;
 }) {
@@ -47,8 +49,8 @@ export default function SlotCard({
 
   // Format time from "HH:MM:SS" to "HH:MM"
   const time = slot.start_time.slice(0, 5);
-  const isBookable = !isFull && !isClosed && !isPast;
-  const canWaitlist = isFull && !isPast && !isClosed && !!onWaitlist;
+  const isBookable = !isFull && !isClosed && !isPast && !isBooked;
+  const canWaitlist = isFull && !isPast && !isClosed && !isBooked && !!onWaitlist;
 
   return (
     <div
@@ -102,7 +104,11 @@ export default function SlotCard({
       </span>
 
       {/* Book button */}
-      {isPast ? (
+      {isBooked ? (
+        <span className="px-4 py-1.5 bg-gold/15 text-gold rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase">
+          Booked
+        </span>
+      ) : isPast ? (
         <button
           disabled
           className="px-4 py-1.5 bg-sand text-warm-grey rounded-full text-[0.7rem] font-semibold tracking-[0.05em] uppercase cursor-not-allowed"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import SlotCard from "./slot-card";
 import BookingModal from "./booking-modal";
 import type { TimetableSlot } from "@/lib/types";
@@ -71,19 +72,49 @@ export default function TimetableView({ studioId }: { studioId: string }) {
   const [modalSlot, setModalSlot] = useState<TimetableSlot | null>(null);
   const [modalMode, setModalMode] = useState<"book" | "waitlist">("book");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Set of "scheduleId_date" keys the current user has already booked
+  const [userBookedKeys, setUserBookedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Data fetch pattern: loading → fetch → resolve
     setLoading(true);
-    fetchTimetable(weekStart).then((result) => {
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = weekStart.toISOString().split("T")[0];
+    const weekEndStr = weekEnd.toISOString().split("T")[0];
+
+    // Fetch timetable and user's bookings in parallel
+    const supabase = createClient();
+    Promise.all([
+      fetchTimetable(weekStart),
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return [];
+        return supabase
+          .from("bookings")
+          .select("schedule_id, date")
+          .eq("profile_id", user.id)
+          .eq("studio_id", studioId)
+          .eq("status", "confirmed")
+          .gte("date", weekStartStr)
+          .lte("date", weekEndStr)
+          .then(({ data }) => data || []);
+      }),
+    ]).then(([timetableSlots, bookings]) => {
       if (!cancelled) {
-        setSlots(result);
+        setSlots(timetableSlots);
+        const keys = new Set<string>();
+        for (const b of bookings) {
+          keys.add(`${b.schedule_id}_${b.date}`);
+        }
+        setUserBookedKeys(keys);
         setLoading(false);
       }
     });
+
     return () => { cancelled = true; };
-  }, [weekStart, refreshKey]);
+  }, [weekStart, refreshKey, studioId]);
 
   const changeWeek = (delta: number) => {
     const next = new Date(weekStart);
@@ -201,6 +232,7 @@ export default function TimetableView({ studioId }: { studioId: string }) {
               >
                 <SlotCard
                   slot={slot}
+                  isBooked={userBookedKeys.has(`${slot.schedule_id}_${slot.date}`)}
                   onBook={() => {
                     setModalMode("book");
                     setModalSlot(slot);

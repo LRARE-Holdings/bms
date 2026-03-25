@@ -345,79 +345,96 @@ export default function BookingModal({
                 </span>
               </div>
 
-              {/* Membership option */}
-              {hasMembership && (
-                <div className="flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl my-3">
-                  <span className="text-[0.8rem] text-cocoa">Membership</span>
-                  <strong className="text-[0.8rem] text-gold">Included</strong>
-                </div>
-              )}
-
-              {/* Drop-in price (show when no membership) */}
-              {!hasMembership && (
-                <div className="flex justify-between items-center bg-cream px-4 py-3 rounded-xl my-3">
-                  <span className="text-[0.82rem] font-semibold text-cocoa">
-                    Drop-in price
-                  </span>
-                  <span className="font-display text-xl font-semibold text-cocoa">
-                    {priceDisplay}
-                  </span>
-                </div>
-              )}
-
-              {/* Pack option (show when no membership but has credits) */}
-              {!hasMembership && packCredits !== null && packCredits > 0 && (
-                <>
-                  <div className="text-center text-[0.75rem] text-warm-grey my-2">
-                    or use a class pack credit
-                  </div>
-                  <div className="flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl mb-3">
-                    <span className="text-[0.8rem] text-cocoa">Pack credits</span>
-                    <strong className="text-[0.8rem] text-cocoa">
-                      {packCredits} remaining
-                    </strong>
-                  </div>
-                </>
-              )}
-
               {error && (
-                <p className="text-[0.8rem] text-ember mb-3">{error}</p>
+                <p className="text-[0.8rem] text-ember mt-3">{error}</p>
               )}
 
-              {/* Actions — priority: membership > pack credit > pay */}
-              <div className="flex gap-2.5 mt-2">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
-                >
-                  Cancel
-                </button>
-                {hasMembership ? (
-                  <button
-                    onClick={handleMembershipBooking}
-                    disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
-                  >
-                    {loading ? "Booking..." : "Book with membership"}
-                  </button>
-                ) : packCredits !== null && packCredits > 0 ? (
-                  <button
-                    onClick={handlePackBooking}
-                    disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
-                  >
-                    {loading ? "Booking..." : "Use credit"}
-                  </button>
-                ) : (
+              {/* Membership — single action */}
+              {hasMembership && (
+                <div className="mt-3 space-y-2.5">
+                  <div className="flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl">
+                    <span className="text-[0.8rem] text-cocoa">Membership</span>
+                    <strong className="text-[0.8rem] text-gold">Included</strong>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <button
+                      onClick={onClose}
+                      className="flex-1 py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleMembershipBooking}
+                      disabled={loading}
+                      className="flex-1 py-2.5 rounded-full bg-gold text-cocoa text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-wheat active:scale-95 transition-all disabled:opacity-60"
+                    >
+                      {loading ? "Booking..." : "Book with membership"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Non-membership — show both credit and drop-in options */}
+              {!hasMembership && (
+                <div className="mt-3 space-y-2.5">
+                  {/* Pack credit option */}
+                  {packCredits !== null && packCredits > 0 && (
+                    <button
+                      onClick={handlePackBooking}
+                      disabled={loading}
+                      className="w-full flex justify-between items-center bg-gold/[0.08] px-4 py-3 rounded-xl hover:bg-gold/[0.15] active:scale-[0.98] transition-all disabled:opacity-60 group"
+                    >
+                      <div className="text-left">
+                        <span className="block text-[0.82rem] font-semibold text-cocoa">
+                          Use a class credit
+                        </span>
+                        <span className="block text-[0.68rem] text-warm-grey">
+                          {packCredits} credit{packCredits === 1 ? "" : "s"} remaining
+                        </span>
+                      </div>
+                      <span className="text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-gold group-hover:text-cocoa transition-colors">
+                        {loading ? "Booking..." : "Use credit"}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Divider when both options shown */}
+                  {packCredits !== null && packCredits > 0 && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-sand" />
+                      <span className="text-[0.65rem] text-warm-grey/60 uppercase tracking-wider">or</span>
+                      <div className="flex-1 h-px bg-sand" />
+                    </div>
+                  )}
+
+                  {/* Drop-in pay option */}
                   <button
                     onClick={handlePayCheckout}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-full bg-cocoa text-wheat text-[0.75rem] font-semibold tracking-[0.05em] uppercase hover:bg-gold hover:text-cocoa active:scale-95 transition-all disabled:opacity-60"
+                    className="w-full flex justify-between items-center bg-cream px-4 py-3 rounded-xl hover:bg-sand/40 active:scale-[0.98] transition-all disabled:opacity-60 group"
                   >
-                    {loading ? "Loading..." : `Pay ${priceDisplay}`}
+                    <div className="text-left">
+                      <span className="block text-[0.82rem] font-semibold text-cocoa">
+                        Pay drop-in
+                      </span>
+                      <span className="block text-[0.68rem] text-warm-grey">
+                        One-time card payment
+                      </span>
+                    </div>
+                    <span className="font-display text-lg font-semibold text-cocoa">
+                      {priceDisplay}
+                    </span>
                   </button>
-                )}
-              </div>
+
+                  {/* Cancel */}
+                  <button
+                    onClick={onClose}
+                    className="w-full py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
