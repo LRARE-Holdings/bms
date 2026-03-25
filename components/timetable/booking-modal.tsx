@@ -138,12 +138,12 @@ export default function BookingModal({
           date: slot.date,
         }),
       });
-      const data = await res.json();
       if (res.ok) {
         toast("Booking confirmed — 1 credit used");
         onBooked();
       } else {
-        setError(data.error || "Failed to book class");
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Failed to book class");
         setLoading(false);
       }
     } catch {
