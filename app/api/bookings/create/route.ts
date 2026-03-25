@@ -103,13 +103,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (bookingError) {
+      console.error("Booking insert error:", bookingError);
       // Roll back credit
       await admin
         .from("class_packs")
         .update({ credits_remaining: packResult.previousCredits })
         .eq("id", packResult.packId);
 
-      return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
+      return NextResponse.json(
+        { error: bookingError.message || "Failed to create booking" },
+        { status: 500 }
+      );
     }
 
     sendBookingConfirmation({

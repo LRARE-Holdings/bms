@@ -142,8 +142,15 @@ export default function BookingModal({
         toast("Booking confirmed — 1 credit used");
         onBooked();
       } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error || "Failed to book class");
+        const text = await res.text().catch(() => "");
+        let errorMsg = `Error ${res.status}`;
+        try {
+          const data = JSON.parse(text);
+          errorMsg = data.error || errorMsg;
+        } catch {
+          errorMsg = text.slice(0, 200) || errorMsg;
+        }
+        setError(errorMsg);
         setLoading(false);
       }
     } catch {

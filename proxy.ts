@@ -69,6 +69,8 @@ export async function proxy(request: NextRequest) {
     body: request.body,
     redirect: request.redirect,
     signal: request.signal,
+    // @ts-expect-error -- duplex is required by the runtime when body is a ReadableStream but not yet in all TS types
+    duplex: "half",
   });
   const nextRequest = new NextRequest(modifiedRequest);
   // Copy cookies from original request (NextRequest constructor doesn't always preserve them)
