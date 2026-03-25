@@ -10,6 +10,7 @@ export default function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -153,6 +154,32 @@ export default function SignupForm() {
         </div>
       </div>
 
+      {/* Policy agreement checkbox */}
+      <label className="flex items-start gap-2.5 cursor-pointer group">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-sand text-gold focus:ring-gold/30 accent-gold cursor-pointer"
+        />
+        <span className="text-[0.72rem] text-warm-grey leading-relaxed">
+          I agree to the{" "}
+          <Link href="/terms" target="_blank" className="text-gold hover:underline">
+            Terms &amp; Conditions
+          </Link>
+          ,{" "}
+          <Link href="/privacy" target="_blank" className="text-gold hover:underline">
+            Privacy Policy
+          </Link>
+          , and{" "}
+          <Link href="/health-statement" target="_blank" className="text-gold hover:underline">
+            Health Statement
+          </Link>
+          .
+        </span>
+      </label>
+
       {/* Error */}
       {error && (
         <div className="flex items-start gap-2 p-3 bg-ember/8 border border-ember/20 rounded-xl">
@@ -168,7 +195,7 @@ export default function SignupForm() {
       {/* Submit */}
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !agreed}
         className="w-full py-3.5 bg-gold text-cocoa rounded-full text-[0.78rem] font-semibold tracking-[0.08em] uppercase hover:bg-wheat hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(196,169,90,0.25)] transition-all duration-300 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
       >
         {loading ? (
@@ -183,19 +210,6 @@ export default function SignupForm() {
           "Create account"
         )}
       </button>
-
-      {/* Terms note */}
-      <p className="text-[0.68rem] text-warm-grey/70 text-center leading-relaxed">
-        By creating an account, you agree to our{" "}
-        <Link href="/terms" className="text-gold hover:underline">
-          Terms
-        </Link>{" "}
-        and{" "}
-        <Link href="/privacy" className="text-gold hover:underline">
-          Privacy Policy
-        </Link>
-        .
-      </p>
 
       {/* Divider */}
       <div className="flex items-center gap-3 my-1">
