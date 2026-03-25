@@ -130,6 +130,10 @@ export default function Footer() {
           <Link href="/cookies" className="hover:text-gold transition-colors">
             Cookies
           </Link>
+          <span>&middot;</span>
+          <Link href="/health-statement" className="hover:text-gold transition-colors">
+            Health Statement
+          </Link>
         </div>
       </div>
 
