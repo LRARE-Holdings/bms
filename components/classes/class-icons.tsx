@@ -122,24 +122,57 @@ function BeginnersPilates() {
   );
 }
 
-/** Baby & Me Yoga — parent with small child, gentle */
-function BabyMeYoga() {
+/** Infrared Sculpt SWT Pilates — figure in wide squat with weights, infrared waves */
+function InfraredSculptSwt() {
   return (
     <svg {...iconProps}>
-      {/* Parent head */}
-      <circle cx="17" cy="8" r="2.5" />
-      {/* Parent body */}
-      <path d="M17 10.5V22" />
-      {/* Parent legs — cross-legged */}
-      <path d="M17 22C14 24 12 26 15 27" />
-      <path d="M17 22C20 24 22 26 19 27" />
-      {/* Parent arms — cradling */}
-      <path d="M17 15C21 14 24 16 24 19" />
-      <path d="M17 17L21 19" />
-      {/* Baby — small circle */}
-      <circle cx="24" cy="17" r="2" strokeWidth="1.2" />
-      {/* Small heart */}
-      <path d="M28 11C28.5 10 30 10 30 11.5C30 13 28 14 28 14C28 14 26 13 26 11.5C26 10 27.5 10 28 11Z" strokeWidth="1" fill="currentColor" opacity="0.3" />
+      {/* Head */}
+      <circle cx="22" cy="7" r="2.5" />
+      {/* Torso — slight forward lean */}
+      <path d="M22 9.5V19" />
+      {/* Wide squat legs */}
+      <path d="M22 19L15 27" />
+      <path d="M22 19L29 27" />
+      {/* Arms raised with weights — victory press */}
+      <path d="M22 13L16 8" />
+      <path d="M22 13L28 8" />
+      {/* Dumbbells */}
+      <line x1="14.5" y1="7" x2="17.5" y2="9" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="26.5" y1="7" x2="29.5" y2="9" strokeWidth="2.5" strokeLinecap="round" />
+      {/* Infrared waves — curved arcs radiating outward */}
+      <path d="M8 18c0-2.5 1.2-4.5 3-6" strokeWidth="1" opacity="0.35" />
+      <path d="M5 19c0-3.5 1.8-6.5 4.5-8.5" strokeWidth="1" opacity="0.2" />
+      <path d="M36 18c0-2.5-1.2-4.5-3-6" strokeWidth="1" opacity="0.35" />
+      <path d="M39 19c0-3.5-1.8-6.5-4.5-8.5" strokeWidth="1" opacity="0.2" />
+      {/* Sweat drops */}
+      <path d="M13 14l-0.5 2" strokeWidth="1" opacity="0.4" />
+      <path d="M31 14l0.5 2" strokeWidth="1" opacity="0.4" />
+    </svg>
+  );
+}
+
+/** Mat Pilates Flow — figure in a flowing roll-up on mat */
+function MatPilatesFlow() {
+  return (
+    <svg {...iconProps}>
+      {/* Head */}
+      <circle cx="24" cy="10" r="2.5" />
+      {/* Torso — mid roll-up, curved spine */}
+      <path d="M24 12.5C23 15 21 17 19 19" />
+      {/* Lower body — extended on mat */}
+      <path d="M19 19C17 21 14 24 12 26" />
+      {/* Upper leg on mat */}
+      <path d="M19 19L16 25" />
+      {/* Arms — reaching forward gracefully */}
+      <path d="M23 14L29 11" />
+      <path d="M22 16L28 14" />
+      {/* Flow lines — smooth arcs suggesting movement */}
+      <path d="M30 17C32 16 33 14 33 12" strokeWidth="1" opacity="0.3" />
+      <path d="M31 20C34 18 35 15 35 12" strokeWidth="1" opacity="0.2" />
+      {/* Mat */}
+      <path d="M8 28L36 28" strokeWidth="1" opacity="0.4" />
+      {/* Mat thickness hint */}
+      <path d="M8 28.5L36 28.5" strokeWidth="0.5" opacity="0.2" />
     </svg>
   );
 }
@@ -150,7 +183,8 @@ const CLASS_ICONS: Record<string, React.FC> = {
   "pilates-sculpt": PilatesSculpt,
   "cardio-pilates": CardioPilates,
   "beginners-pilates": BeginnersPilates,
-  "baby-me-yoga": BabyMeYoga,
+  "infrared-sculpt-swt-pilates": InfraredSculptSwt,
+  "mat-pilates-flow": MatPilatesFlow,
 };
 
 export default function ClassIcon({ slug }: { slug: string }) {

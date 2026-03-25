@@ -12,8 +12,10 @@ const gradientMap: Record<string, string> = {
     "bg-gradient-to-br from-blush/[0.1] to-sand/30",
   "beginners-pilates":
     "bg-gradient-to-br from-wheat/25 to-cream/50",
-  "baby-me-yoga":
-    "bg-gradient-to-br from-sand/40 to-wheat/20",
+  "infrared-sculpt-swt-pilates":
+    "bg-gradient-to-br from-ember/[0.14] to-cocoa/[0.08]",
+  "mat-pilates-flow":
+    "bg-gradient-to-br from-gold/[0.08] to-wheat/30",
 };
 
 export default function ClassCard({ cls }: { cls: Class }) {

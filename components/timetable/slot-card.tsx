@@ -10,7 +10,8 @@ const colorMap: Record<string, string> = {
   "pilates-sculpt": "bg-gold",
   "cardio-pilates": "bg-blush",
   "beginners-pilates": "bg-sand",
-  "baby-me-yoga": "bg-cocoa",
+  "infrared-sculpt-swt-pilates": "bg-ember",
+  "mat-pilates-flow": "bg-gold",
 };
 
 function isDatePast(dateStr: string): boolean {
