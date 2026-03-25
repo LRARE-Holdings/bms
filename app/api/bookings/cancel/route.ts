@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to cancel booking" }, { status: 500 });
     }
 
-    // Re-credit pack if applicable (admin client needed for class_packs UPDATE)
+    // Re-credit pack if applicable (admin client needed for class_packs UPDATE).
+    // Complimentary bookings are one-shot: free_class_used stays true, no refund.
     let creditRefunded = false;
     if (booking.payment_method === "pack_credit") {
       creditRefunded = await incrementPackCredit(admin, user.id, studioId);
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       scheduleId: booking.schedule_id,
       date: booking.date,
       creditRefunded,
+      paymentMethod: booking.payment_method,
     });
 
     return NextResponse.json({ success: true, creditRefunded });

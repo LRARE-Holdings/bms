@@ -42,6 +42,7 @@ export default async function HomePage() {
     { data: packTiers },
     { data: membershipTiers },
     { data: scheduleData },
+    { data: studioSettings },
   ] = await Promise.all([
     supabase
       .from("classes")
@@ -70,7 +71,14 @@ export default async function HomePage() {
       .select("instructor_id, classes(name), instructors(id)")
       .eq("studio_id", studioId)
       .eq("is_active", true),
+    supabase
+      .from("studios")
+      .select("first_class_free_enabled")
+      .eq("id", studioId)
+      .single(),
   ]);
+
+  const firstClassFreeEnabled = studioSettings?.first_class_free_enabled ?? false;
 
   // Derive class tags per instructor from actual schedule data
   const classTagsMap: Record<string, string[]> = {};
@@ -439,33 +447,35 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ═══ CTA BANNER ═══ */}
-      <section className="bg-cocoa py-16 px-8 text-center relative overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 20% 80%, rgba(196,169,90,0.1) 0%, transparent 50%), radial-gradient(ellipse 50% 40% at 80% 20%, rgba(223,208,165,0.06) 0%, transparent 50%)",
-          }}
-        />
-        <div className="relative z-10">
-          <h2 className="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-normal text-wheat mb-2">
-            Your first class is <em className="italic text-gold">on us.</em>
-          </h2>
-          <p className="text-[0.82rem] text-warm-grey mb-6">
-            Try any class free. No card required. Just book and show up.
-          </p>
-          <a
-            href="#timetable"
-            className="inline-flex items-center gap-2.5 px-9 py-3.5 bg-gold text-cocoa text-[0.78rem] font-semibold tracking-[0.08em] uppercase rounded-full transition-all duration-300 hover:bg-wheat hover:-translate-y-0.5"
-          >
-            Book your free class
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 8h10M9 4l4 4-4 4" />
-            </svg>
-          </a>
-        </div>
-      </section>
+      {/* ═══ CTA BANNER — conditional on free class offer ═══ */}
+      {firstClassFreeEnabled && (
+        <section className="bg-cocoa py-16 px-8 text-center relative overflow-hidden">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 50% at 20% 80%, rgba(196,169,90,0.1) 0%, transparent 50%), radial-gradient(ellipse 50% 40% at 80% 20%, rgba(223,208,165,0.06) 0%, transparent 50%)",
+            }}
+          />
+          <div className="relative z-10">
+            <h2 className="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-normal text-wheat mb-2">
+              Your first class is <em className="italic text-gold">on us.</em>
+            </h2>
+            <p className="text-[0.82rem] text-warm-grey mb-6">
+              Try any class free. No card required. Just book and show up.
+            </p>
+            <a
+              href="#timetable"
+              className="inline-flex items-center gap-2.5 px-9 py-3.5 bg-gold text-cocoa text-[0.78rem] font-semibold tracking-[0.08em] uppercase rounded-full transition-all duration-300 hover:bg-wheat hover:-translate-y-0.5"
+            >
+              Book your free class
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 8h10M9 4l4 4-4 4" />
+              </svg>
+            </a>
+          </div>
+        </section>
+      )}
     </>
   );
 }

@@ -22,6 +22,7 @@ export default function BookingModal({
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [packCredits, setPackCredits] = useState<number | null>(null);
   const [hasMembership, setHasMembership] = useState(false);
+  const [hasFreeClass, setHasFreeClass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [waitlistSuccess, setWaitlistSuccess] = useState<number | null>(null);
@@ -36,8 +37,8 @@ export default function BookingModal({
       setUser(user);
 
       if (user) {
-        // Check for active membership and pack credits in parallel
-        const [membershipResult, packsResult] = await Promise.all([
+        // Check for active membership, pack credits, and free class eligibility in parallel
+        const [membershipResult, packsResult, studioResult, smResult] = await Promise.all([
           supabase
             .from("memberships")
             .select("id")
@@ -53,6 +54,17 @@ export default function BookingModal({
             .eq("studio_id", studioId)
             .gt("credits_remaining", 0)
             .gt("expires_at", new Date().toISOString()),
+          supabase
+            .from("studios")
+            .select("first_class_free_enabled")
+            .eq("id", studioId)
+            .single(),
+          supabase
+            .from("studio_memberships")
+            .select("free_class_used")
+            .eq("profile_id", user.id)
+            .eq("studio_id", studioId)
+            .single(),
         ]);
 
         setHasMembership(
@@ -65,6 +77,10 @@ export default function BookingModal({
             0
           ) ?? 0;
         setPackCredits(total);
+
+        const offerEnabled = studioResult.data?.first_class_free_enabled ?? false;
+        const alreadyUsed = smResult.data?.free_class_used ?? true;
+        setHasFreeClass(offerEnabled && !alreadyUsed);
 
         // Check existing waitlist entry if in waitlist mode
         if (mode === "waitlist") {
@@ -161,6 +177,32 @@ export default function BookingModal({
 
   function handlePayCheckout() {
     window.location.href = `/account/checkout?type=dropin&schedule_id=${slot.schedule_id}&date=${slot.date}`;
+  }
+
+  async function handleFreeClassBooking() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/bookings/complimentary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schedule_id: slot.schedule_id,
+          date: slot.date,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast("Booking confirmed \u2014 your first class is on us!");
+        onBooked();
+      } else {
+        setError(data.error || "Failed to book class");
+        setLoading(false);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   }
 
   async function handleJoinWaitlist() {
@@ -374,8 +416,86 @@ export default function BookingModal({
                 </div>
               )}
 
-              {/* Non-membership — show both credit and drop-in options */}
-              {!hasMembership && (
+              {/* Free first class — shown as primary when eligible (no membership) */}
+              {!hasMembership && hasFreeClass && (
+                <div className="mt-3 space-y-2.5">
+                  <button
+                    onClick={handleFreeClassBooking}
+                    disabled={loading}
+                    className="w-full flex justify-between items-center bg-gold/[0.12] border border-gold/30 px-4 py-3 rounded-xl hover:bg-gold/[0.2] active:scale-[0.98] transition-all disabled:opacity-60 group"
+                  >
+                    <div className="text-left">
+                      <span className="block text-[0.82rem] font-semibold text-cocoa">
+                        Your first class is free
+                      </span>
+                      <span className="block text-[0.68rem] text-warm-grey">
+                        No payment needed
+                      </span>
+                    </div>
+                    <span className="text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-gold group-hover:text-cocoa transition-colors">
+                      {loading ? "Booking..." : "Book free"}
+                    </span>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-sand" />
+                    <span className="text-[0.65rem] text-warm-grey/60 uppercase tracking-wider">or pay</span>
+                    <div className="flex-1 h-px bg-sand" />
+                  </div>
+
+                  {/* Pack credit option (secondary) */}
+                  {packCredits !== null && packCredits > 0 && (
+                    <button
+                      onClick={handlePackBooking}
+                      disabled={loading}
+                      className="w-full flex justify-between items-center bg-cream px-4 py-3 rounded-xl hover:bg-sand/40 active:scale-[0.98] transition-all disabled:opacity-60 group"
+                    >
+                      <div className="text-left">
+                        <span className="block text-[0.82rem] font-semibold text-cocoa">
+                          Use a class credit
+                        </span>
+                        <span className="block text-[0.68rem] text-warm-grey">
+                          {packCredits} credit{packCredits === 1 ? "" : "s"} remaining
+                        </span>
+                      </div>
+                      <span className="text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-warm-grey group-hover:text-cocoa transition-colors">
+                        Use credit
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Drop-in pay option (secondary) */}
+                  <button
+                    onClick={handlePayCheckout}
+                    disabled={loading}
+                    className="w-full flex justify-between items-center bg-cream px-4 py-3 rounded-xl hover:bg-sand/40 active:scale-[0.98] transition-all disabled:opacity-60 group"
+                  >
+                    <div className="text-left">
+                      <span className="block text-[0.82rem] font-semibold text-cocoa">
+                        Pay drop-in
+                      </span>
+                      <span className="block text-[0.68rem] text-warm-grey">
+                        One-time card payment
+                      </span>
+                    </div>
+                    <span className="font-display text-lg font-semibold text-cocoa">
+                      {priceDisplay}
+                    </span>
+                  </button>
+
+                  {/* Cancel */}
+                  <button
+                    onClick={onClose}
+                    className="w-full py-2.5 rounded-full border border-sand text-[0.75rem] font-semibold tracking-[0.05em] uppercase text-warm-grey hover:bg-cream active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* Non-membership, no free class — show credit and drop-in options */}
+              {!hasMembership && !hasFreeClass && (
                 <div className="mt-3 space-y-2.5">
                   {/* Pack credit option */}
                   {packCredits !== null && packCredits > 0 && (

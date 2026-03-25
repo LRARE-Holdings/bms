@@ -214,12 +214,14 @@ export async function sendBookingCancellation({
   scheduleId,
   date,
   creditRefunded,
+  paymentMethod,
 }: {
   profileId: string;
   studioId: string;
   scheduleId: string;
   date: string;
   creditRefunded: boolean;
+  paymentMethod?: string;
 }) {
   try {
     const [config, profile, details] = await Promise.all([
@@ -236,6 +238,7 @@ export async function sendBookingCancellation({
       date: formatDate(date),
       time: details.time,
       creditRefunded,
+      paymentMethod,
     });
 
     const { error } = await getResend().emails.send({

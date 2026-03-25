@@ -1,11 +1,23 @@
 import SignupForm from "@/components/auth/signup-form";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { getStudioId } from "@/lib/studio-context";
 
 export const metadata = {
   title: "Sign Up | Burn Mat Studio",
 };
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  const supabase = await createClient();
+  const studioId = await getStudioId();
+
+  const { data: studio } = await supabase
+    .from("studios")
+    .select("first_class_free_enabled")
+    .eq("id", studioId)
+    .single();
+
+  const firstClassFreeEnabled = studio?.first_class_free_enabled ?? false;
   return (
     <section className="min-h-screen flex">
       {/* Left brand panel — hidden on mobile */}
@@ -20,13 +32,27 @@ export default function SignupPage() {
         />
 
         <div className="relative z-10">
-          <h2 className="font-display text-[clamp(2.6rem,4.5vw,4rem)] font-light text-wheat leading-[1.1] mb-4">
-            Your first class<br />
-            is <em className="italic text-gold">on us.</em>
-          </h2>
-          <p className="text-[0.82rem] text-warm-grey leading-relaxed max-w-xs">
-            Create your free account, book a class, and experience the studio. No card required.
-          </p>
+          {firstClassFreeEnabled ? (
+            <>
+              <h2 className="font-display text-[clamp(2.6rem,4.5vw,4rem)] font-light text-wheat leading-[1.1] mb-4">
+                Your first class<br />
+                is <em className="italic text-gold">on us.</em>
+              </h2>
+              <p className="text-[0.82rem] text-warm-grey leading-relaxed max-w-xs">
+                Create your free account, book a class, and experience the studio. No card required.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-[clamp(2.6rem,4.5vw,4rem)] font-light text-wheat leading-[1.1] mb-4">
+                Move, breathe,<br />
+                <em className="italic text-gold">burn.</em>
+              </h2>
+              <p className="text-[0.82rem] text-warm-grey leading-relaxed max-w-xs">
+                Create your free account and start booking classes at the studio.
+              </p>
+            </>
+          )}
         </div>
       </div>
 

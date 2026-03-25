@@ -13,6 +13,7 @@ export interface Studio {
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
   active: boolean;
+  first_class_free_enabled: boolean;
   created_at: string;
 }
 
@@ -32,6 +33,7 @@ export interface StudioMembership {
   studio_id: string;
   profile_id: string;
   role: UserRole;
+  free_class_used: boolean;
   created_at: string;
 }
 

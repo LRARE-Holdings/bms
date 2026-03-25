@@ -6,12 +6,17 @@ interface BookingCancellationData {
   date: string;
   time: string;
   creditRefunded: boolean;
+  paymentMethod?: string;
 }
 
 export function bookingCancellationEmail(data: BookingCancellationData) {
   const creditNote = data.creditRefunded
     ? "Your class pack credit has been refunded."
-    : "If you paid by card, please contact us regarding refund options.";
+    : data.paymentMethod === "complimentary"
+      ? "This was a complimentary class \u2014 no refund is applicable."
+      : data.paymentMethod === "membership"
+        ? "This class was booked with your membership."
+        : "If you paid by card, please contact us regarding refund options.";
 
   const content = `
     <h2 style="margin:0 0 8px;font-size:20px;font-weight:600;color:${BRAND.cocoa};">Booking cancelled</h2>
