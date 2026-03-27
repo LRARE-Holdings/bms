@@ -54,8 +54,28 @@ function isDayToday(weekStart: Date, dayOffset: number): boolean {
   );
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Last day of the current calendar month — the booking horizon. */
+function getBookingHorizon(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+}
+
+/** True if this week extends beyond the bookable horizon (end of current month). */
+function isWeekBeyondHorizon(weekStart: Date): boolean {
+  // The week is "beyond" if Monday is after the last day of the current month
+  const horizon = getBookingHorizon();
+  return weekStart > horizon;
+}
+
 async function fetchTimetable(weekStart: Date): Promise<TimetableSlot[]> {
-  const dateStr = weekStart.toISOString().split("T")[0];
+  const dateStr = toLocalDateStr(weekStart);
   const res = await fetch(`/api/timetable?week_start=${dateStr}`);
   const data = await res.json();
   return data.slots || [];
@@ -76,14 +96,22 @@ export default function TimetableView({ studioId }: { studioId: string }) {
   const [userBookedKeys, setUserBookedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Skip fetching for weeks beyond the booking horizon
+    if (isWeekBeyondHorizon(weekStart)) {
+      setSlots([]);
+      setUserBookedKeys(new Set());
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Data fetch pattern: loading → fetch → resolve
     setLoading(true);
 
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
-    const weekStartStr = weekStart.toISOString().split("T")[0];
-    const weekEndStr = weekEnd.toISOString().split("T")[0];
+    const weekStartStr = toLocalDateStr(weekStart);
+    const weekEndStr = toLocalDateStr(weekEnd);
 
     // Fetch timetable and user's bookings in parallel
     const supabase = createClient();
@@ -122,6 +150,11 @@ export default function TimetableView({ studioId }: { studioId: string }) {
     setWeekStart(next);
   };
 
+  const beyondHorizon = isWeekBeyondHorizon(weekStart);
+  const nextWeek = new Date(weekStart);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextWeekBeyond = isWeekBeyondHorizon(nextWeek);
+
   const daySlots = slots
     .filter((s) => s.day_of_week === selectedDay)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -143,7 +176,12 @@ export default function TimetableView({ studioId }: { studioId: string }) {
             </button>
             <button
               onClick={() => changeWeek(1)}
-              className="w-8 h-8 rounded-full border border-sand bg-transparent flex items-center justify-center text-cocoa hover:bg-cream hover:border-gold transition-colors text-sm"
+              disabled={nextWeekBeyond}
+              className={`w-8 h-8 rounded-full border border-sand bg-transparent flex items-center justify-center transition-colors text-sm ${
+                nextWeekBeyond
+                  ? "text-warm-grey/40 cursor-not-allowed"
+                  : "text-cocoa hover:bg-cream hover:border-gold"
+              }`}
             >
               &rarr;
             </button>
@@ -198,7 +236,16 @@ export default function TimetableView({ studioId }: { studioId: string }) {
 
         {/* Slots */}
         <div className="p-2">
-          {loading ? (
+          {beyondHorizon ? (
+            <div className="py-12 px-4 text-center">
+              <p className="text-sm font-semibold text-cocoa">
+                Timetable not yet available
+              </p>
+              <p className="mt-1.5 text-[0.8rem] text-warm-grey">
+                The schedule for this period hasn&apos;t been released yet. Check back at the start of the month.
+              </p>
+            </div>
+          ) : loading ? (
             <div className="space-y-1 py-1">
               {[0, 1, 2].map((i) => (
                 <div

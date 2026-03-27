@@ -8,6 +8,8 @@ import {
   isBookingClosed,
   getBookingCount,
   getClassCapacity,
+  validateBookingDay,
+  isBeyondBookingHorizon,
 } from "@/lib/booking-helpers";
 
 const schema = z.object({
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Fetch schedule slot with class info
     const { data: scheduleSlot } = await supabase
       .from("schedule")
-      .select("start_time, class_id")
+      .select("start_time, class_id, day_of_week")
       .eq("id", schedule_id)
       .eq("studio_id", studioId)
       .single();
@@ -68,6 +70,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Schedule slot not found" },
         { status: 404 }
+      );
+    }
+
+    if (!validateBookingDay(scheduleSlot.day_of_week, date)) {
+      return NextResponse.json(
+        { error: "Booking date does not match the scheduled day for this class" },
+        { status: 400 }
+      );
+    }
+
+    if (isBeyondBookingHorizon(date)) {
+      return NextResponse.json(
+        { error: "The timetable for this period hasn't been released yet" },
+        { status: 400 }
       );
     }
 

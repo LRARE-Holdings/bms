@@ -24,6 +24,13 @@ export async function GET(request: NextRequest) {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
 
+  function toDateStr(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
   const supabase = await createClient();
 
   // Fetch schedule with class and instructor data (including max_capacity)
@@ -46,8 +53,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch booking counts for this week
-  const weekStartStr = weekStart.toISOString().split("T")[0];
-  const weekEndStr = weekEnd.toISOString().split("T")[0];
+  const weekStartStr = toDateStr(weekStart);
+  const weekEndStr = toDateStr(weekEnd);
 
   const { data: bookings } = await supabase
     .from("bookings")
@@ -73,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     const slotDate = new Date(weekStart);
     slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
-    const dateStr = slotDate.toISOString().split("T")[0];
+    const dateStr = toDateStr(slotDate);
 
     const key = `${slot.id}_${dateStr}`;
     const bookingCount = bookingCounts[key] || 0;

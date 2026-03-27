@@ -23,6 +23,33 @@ export async function getClassCapacity(
 }
 
 /**
+ * Validate that the booking date falls on the correct day of week for the schedule slot.
+ * day_of_week uses 0=Monday schema.
+ */
+export function validateBookingDay(
+  scheduleDayOfWeek: number,
+  date: string
+): boolean {
+  const d = new Date(date + "T00:00:00");
+  const jsDow = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const schemaDow = jsDow === 0 ? 6 : jsDow - 1; // Convert to 0=Mon, 6=Sun
+  return schemaDow === scheduleDayOfWeek;
+}
+
+/**
+ * Check if a booking date is beyond the current month's horizon.
+ * The timetable is released monthly, so bookings beyond the current month are blocked.
+ */
+export function isBeyondBookingHorizon(date: string): boolean {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const y = lastDay.getFullYear();
+  const m = String(lastDay.getMonth() + 1).padStart(2, "0");
+  const d = String(lastDay.getDate()).padStart(2, "0");
+  return date > `${y}-${m}-${d}`;
+}
+
+/**
  * Check if a class slot is past the booking cutoff.
  */
 export function isBookingClosed(startTime: string, date: string): boolean {
