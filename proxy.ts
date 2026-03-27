@@ -44,7 +44,7 @@ async function resolveStudioId(host: string): Promise<string | null> {
 }
 
 // ── Launch gate ───────────────────────────────────────────────────────
-const LAUNCH_TIME = new Date("2025-04-01T10:00:00Z").getTime(); // 10am GMT April 1st
+const LAUNCH_TIME = new Date("2026-04-01T10:00:00Z").getTime(); // 10am GMT April 1st
 const GATE_PASSWORD = "BurnLaunch-xK9mQ4";
 const GATE_COOKIE = "burn_gate_bypass";
 
