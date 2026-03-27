@@ -164,6 +164,7 @@ export default async function WaitlistClaimPage({
       scheduleId={entry.schedule_id}
       date={entry.date}
       pricePence={pricePence}
+      studioId={studioId}
     />
   );
 }

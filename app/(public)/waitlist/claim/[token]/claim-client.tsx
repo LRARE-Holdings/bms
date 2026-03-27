@@ -14,6 +14,7 @@ export default function WaitlistClaimClient({
   scheduleId,
   date,
   pricePence,
+  studioId,
 }: {
   token: string;
   className: string;
@@ -25,6 +26,7 @@ export default function WaitlistClaimClient({
   scheduleId: string;
   date: string;
   pricePence: number;
+  studioId: string;
 }) {
   const [timeLeft, setTimeLeft] = useState(() =>
     Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
@@ -40,7 +42,6 @@ export default function WaitlistClaimClient({
   const [checkingPayment, setCheckingPayment] = useState(true);
 
   const supabase = createClient();
-  const studioId = process.env.NEXT_PUBLIC_STUDIO_ID!;
 
   const priceDisplay =
     pricePence % 100 === 0

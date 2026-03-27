@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
@@ -11,8 +12,19 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient();
+  try {
+  const userClient = await createClient();
   const studioId = await getStudioId();
+
+  // Authenticate the caller
+  const {
+    data: { user },
+  } = await userClient.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const supabase = createAdminClient();
 
   const body = await request.json();
   const parsed = schema.safeParse(body);
@@ -37,6 +49,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Invalid or expired waitlist link" },
       { status: 404 }
+    );
+  }
+
+  // Verify the authenticated user owns this waitlist entry
+  if (entry.profile_id !== user.id) {
+    return NextResponse.json(
+      { error: "This waitlist offer belongs to a different account" },
+      { status: 403 }
     );
   }
 
@@ -160,4 +180,9 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Waitlist claim error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
