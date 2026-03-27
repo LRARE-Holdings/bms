@@ -1,3 +1,5 @@
+import Countdown from "./countdown";
+
 export const dynamic = "force-dynamic";
 
 export const metadata = {
@@ -23,9 +25,14 @@ export default async function GatePage({
         <h1 className="font-display text-2xl font-semibold text-cocoa mb-2">
           We&apos;re almost ready
         </h1>
-        <p className="text-[0.88rem] text-warm-grey mb-8">
-          Our new booking platform launches soon. If you have an early access
-          password, enter it below.
+        <p className="text-[0.88rem] text-warm-grey mb-6">
+          Our new booking platform launches on 1st April.
+        </p>
+
+        <Countdown />
+
+        <p className="text-[0.78rem] text-warm-grey mb-4">
+          Have an early access password?
         </p>
 
         <form action="/gate" method="POST" className="space-y-3">
