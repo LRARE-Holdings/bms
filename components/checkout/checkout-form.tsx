@@ -30,7 +30,7 @@ export default function CheckoutForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { confirmed, polling, startPolling } = usePaymentPolling({
+  const { confirmed, polling, timedOut, startPolling } = usePaymentPolling({
     type,
     scheduleId,
     date,
@@ -106,6 +106,41 @@ export default function CheckoutForm({
             : type === "pack"
               ? "View packs"
               : "View membership"}
+        </Link>
+      </div>
+    );
+  }
+
+  // Payment received but confirmation timed out
+  if (timedOut) {
+    return (
+      <div className="text-center py-10">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-gold/10 rounded-full mb-4">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#C4A95A"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </div>
+        <h2 className="font-display text-xl font-semibold text-cocoa mb-2">
+          Payment received
+        </h2>
+        <p className="text-[0.84rem] text-warm-grey mb-6">
+          Your payment was successful but confirmation is taking longer than expected. Your booking will appear in your account shortly.
+        </p>
+        <Link
+          href="/account/bookings"
+          className="inline-block px-8 py-2.5 bg-gold text-cocoa rounded-full text-[0.78rem] font-semibold tracking-[0.06em] uppercase hover:bg-wheat transition-colors"
+        >
+          Check my bookings
         </Link>
       </div>
     );

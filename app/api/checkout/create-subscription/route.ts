@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createMembershipSubscription } from "@/lib/checkout";
 import { getStudioId } from "@/lib/studio-context";
+
+const schema = z.object({
+  tier_id: z.string().uuid(),
+});
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -14,13 +19,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { tier_id } = await request.json();
-  if (!tier_id) {
+  const body = await request.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "tier_id is required" },
+      { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+
+  const { tier_id } = parsed.data;
 
   try {
     const result = await createMembershipSubscription(

@@ -19,6 +19,7 @@ export function usePaymentPolling({
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const supabase = createClient();
 
   const startPolling = useCallback(() => {
@@ -70,6 +71,7 @@ export function usePaymentPolling({
     // Timeout after 30 seconds
     const timeout = setTimeout(() => {
       setPolling(false);
+      setTimedOut(true);
     }, 30000);
 
     return () => {
@@ -78,5 +80,5 @@ export function usePaymentPolling({
     };
   }, [polling, type, scheduleId, date, tierId, profileId, supabase]);
 
-  return { confirmed, polling, startPolling };
+  return { confirmed, polling, timedOut, startPolling };
 }

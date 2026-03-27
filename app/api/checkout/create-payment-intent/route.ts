@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   createDropinPaymentIntent,
   createPackPaymentIntent,
 } from "@/lib/checkout";
 import { getStudioId } from "@/lib/studio-context";
+
+const dropinSchema = z.object({
+  type: z.literal("dropin"),
+  schedule_id: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+const packSchema = z.object({
+  type: z.literal("pack"),
+  tier_id: z.string().uuid(),
+});
+
+const schema = z.discriminatedUnion("type", [dropinSchema, packSchema]);
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -18,16 +32,17 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { type, schedule_id, date, tier_id } = body;
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
 
   try {
-    if (type === "dropin") {
-      if (!schedule_id || !date) {
-        return NextResponse.json(
-          { error: "schedule_id and date are required for drop-in" },
-          { status: 400 }
-        );
-      }
+    if (parsed.data.type === "dropin") {
+      const { schedule_id, date } = parsed.data;
 
       const result = await createDropinPaymentIntent(
         user.id,
@@ -39,17 +54,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    if (type === "pack") {
-      if (!tier_id) {
-        return NextResponse.json(
-          { error: "tier_id is required for pack purchase" },
-          { status: 400 }
-        );
-      }
-
+    if (parsed.data.type === "pack") {
       const result = await createPackPaymentIntent(
         user.id,
-        tier_id,
+        parsed.data.tier_id,
         studioId
       );
 
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "type must be 'dropin' or 'pack'" },
+      { error: "Invalid payment type" },
       { status: 400 }
     );
   } catch (err) {

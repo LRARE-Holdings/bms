@@ -40,20 +40,21 @@ export async function POST(request: NextRequest) {
 
     const { schedule_id, date } = parsed.data;
 
-    // Check user has an active membership at this studio
+    // Check user has an active membership that covers the booking date
+    const bookingDateEnd = `${date}T23:59:59.999Z`;
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, status, current_period_end")
       .eq("profile_id", user.id)
       .eq("studio_id", studioId)
       .eq("status", "active")
-      .gt("current_period_end", new Date().toISOString())
+      .gt("current_period_end", bookingDateEnd)
       .limit(1)
       .maybeSingle();
 
     if (!membership) {
       return NextResponse.json(
-        { error: "No active membership found" },
+        { error: "No active membership covering this date" },
         { status: 400 }
       );
     }
