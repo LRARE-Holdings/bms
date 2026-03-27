@@ -162,8 +162,6 @@ export async function proxy(request: NextRequest) {
   await supabase.auth.getUser();
 
   // ── 4. Protected route checks ─────────────────────────────────────
-  const { pathname } = request.nextUrl;
-
   const isAccountRoute = pathname.startsWith("/account");
   const isStaffRoute = pathname.startsWith("/staff");
   const isDashboardRoute = pathname.startsWith("/dashboard");
