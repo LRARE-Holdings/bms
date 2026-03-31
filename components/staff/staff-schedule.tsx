@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { dateToDateStr } from "@/lib/date-utils";
 import AttendeeList from "./attendee-list";
 
 
@@ -46,7 +47,7 @@ export default function StaffSchedule({
         const daySlots = slots.filter((s) => s.day_of_week === dayOfWeek);
         if (daySlots.length === 0) return null;
 
-        const dateStr = date.toISOString().split("T")[0];
+        const dateStr = dateToDateStr(date);
 
         return (
           <div key={dateStr}>

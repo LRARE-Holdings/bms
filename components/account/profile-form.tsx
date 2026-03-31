@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { localDateStr } from "@/lib/date-utils";
 import { useToast } from "@/components/ui/toast";
 
 export default function ProfileForm({
@@ -117,7 +118,7 @@ export default function ProfileForm({
           type="date"
           value={dateOfBirth}
           onChange={(e) => setDateOfBirth(e.target.value)}
-          max={new Date().toISOString().split("T")[0]}
+          max={localDateStr()}
           className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors"
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { localDateStr } from "@/lib/date-utils";
 
 export default function SignupForm() {
   const [fullName, setFullName] = useState("");
@@ -186,7 +187,7 @@ export default function SignupForm() {
           value={dateOfBirth}
           onChange={(e) => setDateOfBirth(e.target.value)}
           required
-          max={new Date().toISOString().split("T")[0]}
+          max={localDateStr()}
           className="w-full px-4 py-3 bg-white border border-sand rounded-xl text-[0.88rem] text-cocoa placeholder:text-warm-grey/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all"
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">

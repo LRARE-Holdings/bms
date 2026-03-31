@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, getStudioId } from "@/lib/auth";
+import { localDateStr, dateToDateStr } from "@/lib/date-utils";
 import BookingList, { type BookingRow } from "@/components/account/booking-list";
 import WaitlistList, { type WaitlistRow } from "@/components/account/waitlist-list";
 import AccountHeader from "@/components/account/account-header";
@@ -15,7 +16,7 @@ export default async function BookingsPage() {
   const user = await requireAuth();
   const supabase = await createClient();
   const studioId = await getStudioId();
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr();
 
   const [
     { data: upcomingBookings },
@@ -125,7 +126,7 @@ export default async function BookingsPage() {
       const day = d.getDay();
       const diff = day === 0 ? -6 : 1 - day;
       d.setDate(d.getDate() + diff);
-      uniqueWeeks.add(d.toISOString().split("T")[0]);
+      uniqueWeeks.add(dateToDateStr(d));
     }
 
     const sortedWeeks = Array.from(uniqueWeeks).sort().reverse();
@@ -137,11 +138,11 @@ export default async function BookingsPage() {
     const currentMonday = new Date(now);
     currentMonday.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     currentMonday.setHours(0, 0, 0, 0);
-    const currentWeekStr = currentMonday.toISOString().split("T")[0];
+    const currentWeekStr = dateToDateStr(currentMonday);
 
     const lastMonday = new Date(currentMonday);
     lastMonday.setDate(lastMonday.getDate() - 7);
-    const lastWeekStr = lastMonday.toISOString().split("T")[0];
+    const lastWeekStr = dateToDateStr(lastMonday);
 
     // Start counting from the most recent booking week
     if (sortedWeeks[0] !== currentWeekStr && sortedWeeks[0] !== lastWeekStr) {
