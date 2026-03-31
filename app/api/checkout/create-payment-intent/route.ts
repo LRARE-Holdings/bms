@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createDropinPaymentIntent,
   createPackPaymentIntent,
+  createWaitlistClaimPaymentIntent,
 } from "@/lib/checkout";
 import { getStudioId } from "@/lib/studio-context";
 
@@ -18,7 +19,14 @@ const packSchema = z.object({
   tier_id: z.string().uuid(),
 });
 
-const schema = z.discriminatedUnion("type", [dropinSchema, packSchema]);
+const waitlistClaimSchema = z.object({
+  type: z.literal("waitlist_claim"),
+  schedule_id: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  waitlist_token: z.string(),
+});
+
+const schema = z.discriminatedUnion("type", [dropinSchema, packSchema, waitlistClaimSchema]);
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -59,6 +67,20 @@ export async function POST(request: NextRequest) {
         user.id,
         parsed.data.tier_id,
         studioId
+      );
+
+      return NextResponse.json(result);
+    }
+
+    if (parsed.data.type === "waitlist_claim") {
+      const { schedule_id, date, waitlist_token } = parsed.data;
+
+      const result = await createWaitlistClaimPaymentIntent(
+        user.id,
+        schedule_id,
+        date,
+        studioId,
+        waitlist_token
       );
 
       return NextResponse.json(result);

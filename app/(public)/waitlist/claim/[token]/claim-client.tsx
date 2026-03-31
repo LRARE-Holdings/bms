@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import CheckoutModal from "@/components/checkout/checkout-modal";
 
 export default function WaitlistClaimClient({
   token,
@@ -40,6 +41,7 @@ export default function WaitlistClaimClient({
   const [hasMembership, setHasMembership] = useState(false);
   const [packCredits, setPackCredits] = useState<number | null>(null);
   const [checkingPayment, setCheckingPayment] = useState(true);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const supabase = createClient();
 
@@ -137,7 +139,21 @@ export default function WaitlistClaimClient({
   }
 
   function handlePayWithStripe() {
-    window.location.href = `/account/checkout?type=waitlist_claim&schedule_id=${scheduleId}&date=${date}&waitlist_token=${token}`;
+    setShowCheckout(true);
+  }
+
+  if (showCheckout && user) {
+    return (
+      <CheckoutModal
+        type="waitlist_claim"
+        scheduleId={scheduleId}
+        date={date}
+        waitlistToken={token}
+        profileId={user.id}
+        onClose={() => setShowCheckout(false)}
+        onSuccess={() => setClaimed(true)}
+      />
+    );
   }
 
   if (claimed) {

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuth, getStudioId } from "@/lib/auth";
 import AccountHeader from "@/components/account/account-header";
 import MembershipStatus from "@/components/account/membership-status";
-import Link from "next/link";
+import SubscribeButton from "@/components/checkout/subscribe-button";
 import type { MembershipTier } from "@/lib/types";
 
 export const metadata = {
@@ -89,12 +89,13 @@ export default async function MembershipPage() {
                   <p className="text-[0.72rem] text-warm-grey mb-4">
                     {intervalLabel}
                   </p>
-                  <Link
-                    href={`/account/checkout?type=membership&tier_id=${tier.id}`}
+                  <SubscribeButton
+                    tierId={tier.id}
+                    profileId={user.id}
                     className="block w-full py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center bg-cocoa text-wheat hover:bg-gold hover:text-cocoa transition-colors"
                   >
                     Subscribe
-                  </Link>
+                  </SubscribeButton>
                 </div>
               );
             })}

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import ClassIcon from "@/components/classes/class-icons";
+import CheckoutModal from "@/components/checkout/checkout-modal";
 import type { TimetableSlot } from "@/lib/types";
 
 export default function BookingModal({
@@ -30,6 +31,7 @@ export default function BookingModal({
   const [error, setError] = useState("");
   const [waitlistSuccess, setWaitlistSuccess] = useState<number | null>(null);
   const [alreadyOnWaitlist, setAlreadyOnWaitlist] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const supabase = createClient();
   const { toast } = useToast();
@@ -198,7 +200,7 @@ export default function BookingModal({
   }
 
   function handlePayCheckout() {
-    window.location.href = `/account/checkout?type=dropin&schedule_id=${slot.schedule_id}&date=${slot.date}`;
+    setShowCheckout(true);
   }
 
   async function handleFreeClassBooking() {
@@ -296,6 +298,19 @@ export default function BookingModal({
       setError("Something went wrong. Please try again.");
       setLoading(false);
     }
+  }
+
+  if (showCheckout && user) {
+    return (
+      <CheckoutModal
+        type="dropin"
+        scheduleId={slot.schedule_id}
+        date={slot.date}
+        profileId={user.id}
+        onClose={() => setShowCheckout(false)}
+        onSuccess={onBooked}
+      />
+    );
   }
 
   return (

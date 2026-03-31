@@ -109,6 +109,7 @@ export async function createDropinPaymentIntent(
       amount: cls.price_pence,
       currency: "gbp",
       customer: customerId,
+      receipt_email: profile?.email || undefined,
       metadata: {
         type: "drop_in_class",
         schedule_id: scheduleId,
@@ -231,6 +232,7 @@ export async function createWaitlistClaimPaymentIntent(
       amount: cls.price_pence,
       currency: "gbp",
       customer: customerId,
+      receipt_email: profile?.email || undefined,
       metadata: {
         type: "waitlist_claim",
         schedule_id: scheduleId,
@@ -309,6 +311,7 @@ export async function createPackPaymentIntent(
       amount: tier.price_pence,
       currency: "gbp",
       customer: customerId,
+      receipt_email: profile?.email || undefined,
       metadata: {
         type: "pack_tier",
         pack_tier_id: tierId,

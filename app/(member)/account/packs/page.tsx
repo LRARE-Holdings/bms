@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuth, getStudioId } from "@/lib/auth";
 import PackStatus from "@/components/account/pack-status";
 import AccountHeader from "@/components/account/account-header";
-import Link from "next/link";
+import BuyPackButton from "@/components/checkout/buy-pack-button";
 import type { Class, PackTier } from "@/lib/types";
 
 export const metadata = {
@@ -108,8 +108,9 @@ export default async function PacksPage() {
                   <p className="text-[0.68rem] text-warm-grey">
                     {formatValidity(tier.validity_days)}
                   </p>
-                  <Link
-                    href={`/account/checkout?type=pack&tier_id=${tier.id}`}
+                  <BuyPackButton
+                    tierId={tier.id}
+                    profileId={user.id}
                     className={`block w-full mt-4 py-2.5 rounded-full text-[0.72rem] font-semibold tracking-[0.06em] uppercase text-center border-[1.5px] transition-colors ${
                       isBestValue
                         ? "border-gold text-gold bg-transparent hover:bg-gold hover:text-cocoa"
@@ -117,7 +118,7 @@ export default async function PacksPage() {
                     }`}
                   >
                     Buy pack
-                  </Link>
+                  </BuyPackButton>
                 </div>
               );
             })}
