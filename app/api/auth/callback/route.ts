@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
               .eq("id", user.id);
           }
 
-          sendWelcomeEmail({ profileId: user.id, studioId });
+          await sendWelcomeEmail({ profileId: user.id, studioId });
         }
       }
 

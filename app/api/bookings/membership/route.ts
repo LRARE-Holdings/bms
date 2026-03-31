@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    sendBookingConfirmation({
+    await sendBookingConfirmation({
       profileId: user.id,
       studioId,
       scheduleId: schedule_id,

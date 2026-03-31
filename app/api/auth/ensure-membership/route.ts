@@ -40,7 +40,7 @@ export async function POST() {
         .eq("id", user.id);
     }
 
-    sendWelcomeEmail({ profileId: user.id, studioId });
+    await sendWelcomeEmail({ profileId: user.id, studioId });
   }
 
   return NextResponse.json({ ok: true });

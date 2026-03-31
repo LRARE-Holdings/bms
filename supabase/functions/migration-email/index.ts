@@ -93,8 +93,8 @@ function buildEmail(memberName: string): { subject: string; html: string } {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
           <!-- Header -->
           <tr>
-            <td align="center" style="padding:24px 0 20px;background-color:${BRAND.cocoa};border-radius:16px 16px 0 0;">
-              <h1 style="margin:0;font-size:22px;font-weight:600;color:${BRAND.wheat};letter-spacing:0.06em;">BURN MAT STUDIO</h1>
+            <td align="center" style="padding:24px 32px;background-color:${BRAND.cocoa};border-radius:16px 16px 0 0;">
+              <img src="https://burnmatstudio.co.uk/burn-light.png" alt="Burn Mat Studio" width="180" style="display:block;" />
             </td>
           </tr>
           <!-- Body -->

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
             role: "member",
           });
 
-          sendWelcomeEmail({ profileId: user.id, studioId });
+          await sendWelcomeEmail({ profileId: user.id, studioId });
         }
       }
 

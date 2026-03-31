@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    sendBookingCancellation({
+    await sendBookingCancellation({
       profileId: user.id,
       studioId,
       scheduleId: booking.schedule_id,

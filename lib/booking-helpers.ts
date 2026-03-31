@@ -2,6 +2,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const BOOKING_CUTOFF_MINS = 30;
 const DEFAULT_MAX_CAPACITY = 10;
+const UK_TIMEZONE = "Europe/London";
+
+/**
+ * Get the current date/time in the UK timezone.
+ * Vercel servers run in UTC — this ensures cutoff and horizon
+ * calculations use UK local time (handles GMT/BST automatically).
+ */
+function nowUK(): Date {
+  const ukString = new Date().toLocaleString("en-GB", { timeZone: UK_TIMEZONE });
+  // en-GB format: "31/03/2026, 11:00:00" → parse back to Date
+  const [datePart, timePart] = ukString.split(", ");
+  const [day, month, year] = datePart.split("/");
+  const [h, m, s] = timePart.split(":");
+  return new Date(+year, +month - 1, +day, +h, +m, +s);
+}
 
 /**
  * Get the max capacity for a class. Falls back to DEFAULT_MAX_CAPACITY
@@ -39,9 +54,10 @@ export function validateBookingDay(
 /**
  * Check if a booking date is beyond the current month's horizon.
  * The timetable is released monthly, so bookings beyond the current month are blocked.
+ * Uses UK timezone so the horizon boundary aligns with the studio's local date.
  */
 export function isBeyondBookingHorizon(date: string): boolean {
-  const now = new Date();
+  const now = nowUK();
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const y = lastDay.getFullYear();
   const m = String(lastDay.getMonth() + 1).padStart(2, "0");
@@ -51,13 +67,16 @@ export function isBeyondBookingHorizon(date: string): boolean {
 
 /**
  * Check if a class slot is past the booking cutoff.
+ * Class start_time is stored as UK local time (e.g. "18:00"),
+ * so we compare against the current UK time.
  */
 export function isBookingClosed(startTime: string, date: string): boolean {
   const [h, m] = startTime.split(":").map(Number);
-  const classStart = new Date(date + "T00:00:00");
-  classStart.setHours(h, m, 0, 0);
+  // Build a Date representing the class start in UK local time
+  const [year, month, day] = date.split("-").map(Number);
+  const classStart = new Date(year, month - 1, day, h, m, 0, 0);
   const cutoff = new Date(classStart.getTime() - BOOKING_CUTOFF_MINS * 60_000);
-  return new Date() >= cutoff;
+  return nowUK() >= cutoff;
 }
 
 /**
@@ -115,10 +134,13 @@ export async function getBookingCount(
  * Uses a conditional update that only succeeds if credits > 0.
  * Returns the pack ID if successful, or null if no credits available.
  */
+const MAX_DECREMENT_RETRIES = 3;
+
 export async function decrementPackCredit(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
-  studioId: string
+  studioId: string,
+  _retries = 0
 ): Promise<{ packId: string; previousCredits: number } | null> {
   // Find the user's oldest valid pack with credits
   const { data: packs } = await supabase
@@ -147,8 +169,11 @@ export async function decrementPackCredit(
 
   if (error || !updated) {
     // Optimistic lock failed — another request modified this pack.
-    // Retry once with fresh data.
-    return decrementPackCredit(supabase, userId, studioId);
+    // Retry with fresh data, up to a maximum number of attempts.
+    if (_retries < MAX_DECREMENT_RETRIES) {
+      return decrementPackCredit(supabase, userId, studioId, _retries + 1);
+    }
+    return null;
   }
 
   return { packId: pack.id, previousCredits: pack.credits_remaining };

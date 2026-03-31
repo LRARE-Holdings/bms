@@ -77,7 +77,7 @@ export async function createDropinPaymentIntent(
     .eq("profile_id", userId)
     .eq("date", date)
     .eq("status", "confirmed")
-    .single();
+    .maybeSingle();
 
   if (existing) {
     throw new Error("You already have a booking for this class");
@@ -200,7 +200,7 @@ export async function createWaitlistClaimPaymentIntent(
     .eq("profile_id", userId)
     .eq("date", date)
     .eq("status", "confirmed")
-    .single();
+    .maybeSingle();
 
   if (existing) {
     throw new Error("You already have a booking for this class");

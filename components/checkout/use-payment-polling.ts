@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { CheckoutType } from "@/lib/types";
 
@@ -20,14 +20,18 @@ export function usePaymentPolling({
   const [confirmed, setConfirmed] = useState(false);
   const [polling, setPolling] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+  const pollingStartedAt = useRef<string | null>(null);
   const supabase = createClient();
 
   const startPolling = useCallback(() => {
+    pollingStartedAt.current = new Date().toISOString();
     setPolling(true);
   }, []);
 
   useEffect(() => {
     if (!polling) return;
+
+    const startedAt = pollingStartedAt.current || new Date().toISOString();
 
     const interval = setInterval(async () => {
       let found = false;
@@ -40,16 +44,17 @@ export function usePaymentPolling({
           .eq("profile_id", profileId)
           .eq("date", date)
           .eq("status", "confirmed")
-          .single();
+          .maybeSingle();
         found = !!data;
       } else if (type === "pack" && tierId) {
         const { data } = await supabase
           .from("class_packs")
           .select("id")
           .eq("profile_id", profileId)
-          .order("created_at", { ascending: false })
+          .eq("pack_tier_id", tierId)
+          .gte("created_at", startedAt)
           .limit(1)
-          .single();
+          .maybeSingle();
         found = !!data;
       } else if (type === "membership" && tierId) {
         const { data } = await supabase
@@ -58,7 +63,7 @@ export function usePaymentPolling({
           .eq("profile_id", profileId)
           .eq("membership_tier_id", tierId)
           .eq("status", "active")
-          .single();
+          .maybeSingle();
         found = !!data;
       }
 

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     .eq("profile_id", entry.profile_id)
     .eq("date", entry.date)
     .eq("status", "confirmed")
-    .single();
+    .maybeSingle();
 
   if (existingBooking) {
     await supabase
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       .eq("status", "active")
       .gt("current_period_end", new Date().toISOString())
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!membership) {
       return NextResponse.json(
@@ -170,8 +170,7 @@ export async function POST(request: NextRequest) {
     .update({ status: "claimed" })
     .eq("id", entry.id);
 
-  // Send confirmation email (fire-and-forget)
-  sendBookingConfirmation({
+  await sendBookingConfirmation({
     profileId: entry.profile_id,
     studioId,
     scheduleId: entry.schedule_id,
