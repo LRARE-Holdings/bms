@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
 
 const DEFAULT_MAX_CAPACITY = 10;
@@ -53,10 +54,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch booking counts for this week
+  // Use admin client to bypass RLS — spot availability is public information,
+  // but the bookings RLS policy restricts SELECT to the booking owner.
   const weekStartStr = toDateStr(weekStart);
   const weekEndStr = toDateStr(weekEnd);
+  const adminClient = createAdminClient();
 
-  const { data: bookings } = await supabase
+  const { data: bookings } = await adminClient
     .from("bookings")
     .select("schedule_id, date")
     .eq("studio_id", studioId)
