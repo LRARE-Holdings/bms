@@ -6,6 +6,7 @@ import { sendBookingConfirmation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
 import {
   isBookingClosed,
+  isClassSkipped,
   getBookingCount,
   getClassCapacity,
   decrementPackCredit,
@@ -75,6 +76,13 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    if (await isClassSkipped(admin, studioId, schedule_id, date)) {
+      return NextResponse.json(
+        { error: "This class has been cancelled" },
+        { status: 400 }
+      );
+    }
 
     const [bookingCount, maxCapacity] = await Promise.all([
       getBookingCount(admin, schedule_id, date, studioId),

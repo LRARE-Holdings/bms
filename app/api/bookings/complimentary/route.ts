@@ -6,6 +6,7 @@ import { sendBookingConfirmation } from "@/lib/email/send";
 import { getStudioId } from "@/lib/studio-context";
 import {
   isBookingClosed,
+  isClassSkipped,
   getBookingCount,
   getClassCapacity,
   validateBookingDay,
@@ -109,6 +110,13 @@ export async function POST(request: NextRequest) {
     if (isBookingClosed(scheduleSlot.start_time, date)) {
       return NextResponse.json(
         { error: "Bookings close 30 minutes before class starts" },
+        { status: 400 }
+      );
+    }
+
+    if (await isClassSkipped(admin, studioId, schedule_id, date)) {
+      return NextResponse.json(
+        { error: "This class has been cancelled" },
         { status: 400 }
       );
     }

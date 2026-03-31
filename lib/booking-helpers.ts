@@ -61,6 +61,36 @@ export function isBookingClosed(startTime: string, date: string): boolean {
 }
 
 /**
+ * Check if a class instance is skipped (has a schedule_exception) or falls
+ * within a studio holiday. Returns true if the class should not be bookable.
+ */
+export async function isClassSkipped(
+  supabase: ReturnType<typeof createAdminClient>,
+  studioId: string,
+  scheduleId: string,
+  date: string
+): Promise<boolean> {
+  const [{ data: exception }, { data: holidays }] = await Promise.all([
+    supabase
+      .from("schedule_exceptions")
+      .select("id")
+      .eq("studio_id", studioId)
+      .eq("schedule_id", scheduleId)
+      .eq("date", date)
+      .maybeSingle(),
+    supabase
+      .from("studio_holidays")
+      .select("id")
+      .eq("studio_id", studioId)
+      .lte("start_date", date)
+      .gte("end_date", date)
+      .limit(1),
+  ]);
+
+  return !!exception || (holidays != null && holidays.length > 0);
+}
+
+/**
  * Get the current confirmed booking count for a slot on a specific date.
  */
 export async function getBookingCount(

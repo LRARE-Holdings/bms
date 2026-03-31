@@ -5,7 +5,7 @@ import {
   getStudioStripeAccount,
   getOrCreateStripeCustomer,
 } from "@/lib/stripe";
-import { isBookingClosed, getBookingCount, getClassCapacity } from "@/lib/booking-helpers";
+import { isBookingClosed, isClassSkipped, getBookingCount, getClassCapacity } from "@/lib/booking-helpers";
 
 interface CheckoutResult {
   clientSecret: string;
@@ -52,6 +52,11 @@ export async function createDropinPaymentIntent(
   // Validate booking cutoff (30 min before class)
   if (isBookingClosed(slot.start_time, date)) {
     throw new Error("Bookings close 30 minutes before class starts");
+  }
+
+  // Reject if class is skipped or studio is on holiday
+  if (await isClassSkipped(supabase, studioId, scheduleId, date)) {
+    throw new Error("This class has been cancelled");
   }
 
   // Check class not full — use DB-sourced capacity
@@ -178,6 +183,11 @@ export async function createWaitlistClaimPaymentIntent(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cls = Array.isArray(slot.classes) ? slot.classes[0] : (slot.classes as any);
   if (!cls) throw new Error("Class not found for this schedule slot");
+
+  // Reject if class is skipped or studio is on holiday
+  if (await isClassSkipped(supabase, studioId, scheduleId, date)) {
+    throw new Error("This class has been cancelled");
+  }
 
   // No capacity check — spot is held for the claimant
 

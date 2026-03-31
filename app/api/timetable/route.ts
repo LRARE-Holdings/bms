@@ -53,20 +53,47 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch booking counts for this week
   // Use admin client to bypass RLS — spot availability is public information,
   // but the bookings RLS policy restricts SELECT to the booking owner.
   const weekStartStr = toDateStr(weekStart);
   const weekEndStr = toDateStr(weekEnd);
   const adminClient = createAdminClient();
 
-  const { data: bookings } = await adminClient
-    .from("bookings")
-    .select("schedule_id, date")
-    .eq("studio_id", studioId)
-    .eq("status", "confirmed")
-    .gte("date", weekStartStr)
-    .lte("date", weekEndStr);
+  // Fetch booking counts, schedule exceptions (skips), and studio holidays for this week
+  const [{ data: bookings }, { data: exceptions }, { data: holidays }] =
+    await Promise.all([
+      adminClient
+        .from("bookings")
+        .select("schedule_id, date")
+        .eq("studio_id", studioId)
+        .eq("status", "confirmed")
+        .gte("date", weekStartStr)
+        .lte("date", weekEndStr),
+      adminClient
+        .from("schedule_exceptions")
+        .select("schedule_id, date")
+        .eq("studio_id", studioId)
+        .gte("date", weekStartStr)
+        .lte("date", weekEndStr),
+      adminClient
+        .from("studio_holidays")
+        .select("start_date, end_date")
+        .eq("studio_id", studioId)
+        .lte("start_date", weekEndStr)
+        .gte("end_date", weekStartStr),
+    ]);
+
+  // Build a set of skipped schedule_id:date combos for O(1) lookup
+  const skippedSet = new Set(
+    (exceptions ?? []).map((e) => `${e.schedule_id}_${e.date}`)
+  );
+
+  // Check if a date falls within any studio holiday
+  function isHolidayDate(dateStr: string): boolean {
+    return (holidays ?? []).some(
+      (h) => dateStr >= h.start_date && dateStr <= h.end_date
+    );
+  }
 
   // Count bookings per schedule_id + date
   const bookingCounts: Record<string, number> = {};
@@ -77,35 +104,40 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Build response
-  const slots = (scheduleSlots || []).map((slot: Record<string, unknown>) => {
-    const cls = slot.classes as Record<string, unknown>;
-    const instructor = slot.instructors as Record<string, unknown>;
+  // Build response — filter out skipped and holiday slots
+  const slots = (scheduleSlots || [])
+    .map((slot: Record<string, unknown>) => {
+      const cls = slot.classes as Record<string, unknown>;
+      const instructor = slot.instructors as Record<string, unknown>;
 
-    const slotDate = new Date(weekStart);
-    slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
-    const dateStr = toDateStr(slotDate);
+      const slotDate = new Date(weekStart);
+      slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
+      const dateStr = toDateStr(slotDate);
 
-    const key = `${slot.id}_${dateStr}`;
-    const bookingCount = bookingCounts[key] || 0;
-    const maxCapacity = (cls.capacity as number) ?? DEFAULT_MAX_CAPACITY;
+      const key = `${slot.id}_${dateStr}`;
+      const bookingCount = bookingCounts[key] || 0;
+      const maxCapacity = (cls.capacity as number) ?? DEFAULT_MAX_CAPACITY;
 
-    return {
-      schedule_id: slot.id,
-      day_of_week: slot.day_of_week,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
-      date: dateStr,
-      class_name: cls.name,
-      class_slug: cls.slug,
-      duration_mins: cls.duration_mins,
-      price_pence: cls.price_pence,
-      max_capacity: maxCapacity,
-      instructor_name: instructor.name,
-      booking_count: bookingCount,
-      spots_remaining: maxCapacity - bookingCount,
-    };
-  });
+      return {
+        schedule_id: slot.id,
+        day_of_week: slot.day_of_week,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        date: dateStr,
+        class_name: cls.name,
+        class_slug: cls.slug,
+        duration_mins: cls.duration_mins,
+        price_pence: cls.price_pence,
+        max_capacity: maxCapacity,
+        instructor_name: instructor.name,
+        booking_count: bookingCount,
+        spots_remaining: maxCapacity - bookingCount,
+      };
+    })
+    .filter((slot) => {
+      const key = `${slot.schedule_id}_${slot.date}`;
+      return !skippedSet.has(key) && !isHolidayDate(slot.date);
+    });
 
   return NextResponse.json({
     week_start: weekStartStr,
