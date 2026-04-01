@@ -43,59 +43,8 @@ async function resolveStudioId(host: string): Promise<string | null> {
   return data.id;
 }
 
-// ── Launch gate ───────────────────────────────────────────────────────
-const LAUNCH_TIME = new Date("2026-04-01T10:00:00Z").getTime(); // 10am GMT April 1st
-const GATE_PASSWORD = "BurnLaunch-xK9mQ4";
-const GATE_COOKIE = "burn_gate_bypass";
-
-function isGated(request: NextRequest): boolean {
-  if (Date.now() >= LAUNCH_TIME) return false; // Gate lifts automatically
-  if (request.cookies.get(GATE_COOKIE)?.value === "1") return false; // Password bypass
-  return true;
-}
-
 export async function proxy(request: NextRequest) {
-  // ── 0. Launch gate ─────────────────────────────────────────────────
   const { pathname } = request.nextUrl;
-
-  // Gate password submission
-  if (pathname === "/gate" && request.method === "POST") {
-    const formData = await request.formData();
-    const password = formData.get("password")?.toString();
-
-    if (password === GATE_PASSWORD) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      const response = NextResponse.redirect(url);
-      response.cookies.set(GATE_COOKIE, "1", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
-      return response;
-    }
-
-    // Wrong password — redirect back to gate with error
-    const url = request.nextUrl.clone();
-    url.pathname = "/gate";
-    url.searchParams.set("error", "1");
-    return NextResponse.redirect(url);
-  }
-
-  // Allow the gate page itself, API routes, and static assets through
-  const isGateExempt =
-    pathname === "/gate" ||
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/_next/");
-
-  if (!isGateExempt && isGated(request)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/gate";
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
 
   // ── 1. Resolve studio ID ──────────────────────────────────────────
   let studioId: string | null = null;
