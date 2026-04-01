@@ -84,14 +84,14 @@ export default function PackStatus({ packs }: { packs: ClassPackWithTier[] }) {
                 / {pack.credits_total} credits
               </span>
             </div>
-            {/* Progress bar with animated fill */}
+            {/* Progress bar — uses scaleX instead of width to avoid CLS */}
             <div className="w-full h-1.5 bg-sand rounded-full mb-2 overflow-hidden">
               <div
-                className={`h-1.5 rounded-full transition-all duration-700 ease-out ${
+                className={`h-1.5 w-full origin-left rounded-full transition-transform duration-700 ease-out ${
                   isExpiringSoon ? "bg-ember" : "bg-gold"
                 }`}
                 style={{
-                  width: mounted ? `${pct}%` : "0%",
+                  transform: mounted ? `scaleX(${pct / 100})` : "scaleX(0)",
                 }}
               />
             </div>

@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 const COOKIE_CONSENT_KEY = "bms_cookie_consent";
 
 export default function CookieBanner() {
-  const [visible, setVisible] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !localStorage.getItem(COOKIE_CONSENT_KEY);
-  });
+  // Start hidden — only show after hydration confirms no consent stored.
+  // This avoids SSR→client mismatch and prevents CLS from the banner sliding in.
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem(COOKIE_CONSENT_KEY)) {
+      setVisible(true);
+    }
+  }, []);
 
   function accept() {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
@@ -21,13 +26,16 @@ export default function CookieBanner() {
     setVisible(false);
   }
 
-  if (!visible) return null;
-
   return (
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4 animate-slide-up"
+      aria-hidden={!visible}
+      className={`fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4 transition-all duration-400 ease-out ${
+        visible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-full opacity-0 pointer-events-none"
+      }`}
     >
       <div className="mx-auto max-w-xl rounded-2xl border border-sand bg-white/95 backdrop-blur-sm shadow-lg px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
         <p className="text-[0.8rem] leading-relaxed text-slate flex-1">
