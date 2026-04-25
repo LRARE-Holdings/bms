@@ -61,17 +61,22 @@ function toLocalDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Last day of the current calendar month — the booking horizon. */
+/**
+ * The booking horizon — end of the bookable period.
+ * Normally the last day of the current month, but it extends to the end
+ * of next month once we're within 2 weeks of next month starting (early release).
+ */
 function getBookingHorizon(): Date {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const earlyRelease = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  earlyRelease.setDate(earlyRelease.getDate() - 14);
+  const monthsAhead = now >= earlyRelease ? 2 : 1;
+  return new Date(now.getFullYear(), now.getMonth() + monthsAhead, 0, 23, 59, 59);
 }
 
-/** True if this week extends beyond the bookable horizon (end of current month). */
+/** True if this week extends beyond the bookable horizon. */
 function isWeekBeyondHorizon(weekStart: Date): boolean {
-  // The week is "beyond" if Monday is after the last day of the current month
-  const horizon = getBookingHorizon();
-  return weekStart > horizon;
+  return weekStart > getBookingHorizon();
 }
 
 async function fetchTimetable(weekStart: Date): Promise<TimetableSlot[]> {
@@ -242,7 +247,7 @@ export default function TimetableView({ studioId }: { studioId: string }) {
                 Timetable not yet available
               </p>
               <p className="mt-1.5 text-[0.8rem] text-warm-grey">
-                The schedule for this period hasn&apos;t been released yet. Check back at the start of the month.
+                The schedule for this period hasn&apos;t been released yet. Check back two weeks before the month begins.
               </p>
             </div>
           ) : loading ? (

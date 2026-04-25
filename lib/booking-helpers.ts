@@ -52,13 +52,18 @@ export function validateBookingDay(
 }
 
 /**
- * Check if a booking date is beyond the current month's horizon.
- * The timetable is released monthly, so bookings beyond the current month are blocked.
+ * Check if a booking date is beyond the current booking horizon.
+ * The timetable is released monthly, with next month opening 2 weeks before
+ * its first day — so within that early-release window the horizon extends
+ * to the end of next month.
  * Uses UK timezone so the horizon boundary aligns with the studio's local date.
  */
 export function isBeyondBookingHorizon(date: string): boolean {
   const now = nowUK();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const earlyRelease = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  earlyRelease.setDate(earlyRelease.getDate() - 14);
+  const monthsAhead = now >= earlyRelease ? 2 : 1;
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + monthsAhead, 0);
   const y = lastDay.getFullYear();
   const m = String(lastDay.getMonth() + 1).padStart(2, "0");
   const d = String(lastDay.getDate()).padStart(2, "0");
