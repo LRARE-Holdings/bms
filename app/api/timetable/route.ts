@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // Fetch schedule with class and instructor data (including max_capacity)
+  // Fetch schedule with class and instructor data (including max_capacity).
+  // Pull the parent rule's date window so we can drop occurrences that fall
+  // outside its starts_on/ends_on. Rows with rule_id=NULL are treated as
+  // always valid (legacy/manual entries).
   const { data: scheduleSlots, error } = await supabase
     .from("schedule")
     .select(`
@@ -42,8 +45,10 @@ export async function GET(request: NextRequest) {
       day_of_week,
       start_time,
       end_time,
+      rule_id,
       classes!inner(name, slug, duration_mins, price_pence, capacity),
-      instructors!inner(name)
+      instructors!inner(name),
+      schedule_rules(starts_on, ends_on)
     `)
     .eq("studio_id", studioId)
     .eq("is_active", true)
@@ -109,6 +114,12 @@ export async function GET(request: NextRequest) {
     .map((slot: Record<string, unknown>) => {
       const cls = slot.classes as Record<string, unknown>;
       const instructor = slot.instructors as Record<string, unknown>;
+      const ruleRel = slot.schedule_rules as
+        | { starts_on: string; ends_on: string | null }
+        | { starts_on: string; ends_on: string | null }[]
+        | null
+        | undefined;
+      const rule = Array.isArray(ruleRel) ? ruleRel[0] ?? null : ruleRel ?? null;
 
       const slotDate = new Date(weekStart);
       slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
@@ -132,16 +143,23 @@ export async function GET(request: NextRequest) {
         instructor_name: instructor.name,
         booking_count: bookingCount,
         spots_remaining: maxCapacity - bookingCount,
+        rule_window: rule,
       };
     })
     .filter((slot) => {
       const key = `${slot.schedule_id}_${slot.date}`;
-      return !skippedSet.has(key) && !isHolidayDate(slot.date);
+      if (skippedSet.has(key) || isHolidayDate(slot.date)) return false;
+      const window = slot.rule_window;
+      if (window) {
+        if (slot.date < window.starts_on) return false;
+        if (window.ends_on && slot.date > window.ends_on) return false;
+      }
+      return true;
     });
 
   return NextResponse.json({
     week_start: weekStartStr,
     week_end: weekEndStr,
-    slots,
+    slots: slots.map(({ rule_window, ...rest }) => rest),
   });
 }

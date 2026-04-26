@@ -12,6 +12,7 @@ interface ScheduleSlot {
   end_time: string;
   classes: { name: string; duration_mins: number };
   instructors: { name: string };
+  rule_window: { starts_on: string; ends_on: string | null } | null;
 }
 
 export default function StaffSchedule({
@@ -44,10 +45,16 @@ export default function StaffSchedule({
   return (
     <div className="space-y-4">
       {dates.map(({ date, dayOfWeek, label }) => {
-        const daySlots = slots.filter((s) => s.day_of_week === dayOfWeek);
-        if (daySlots.length === 0) return null;
-
         const dateStr = dateToDateStr(date);
+        const daySlots = slots.filter((s) => {
+          if (s.day_of_week !== dayOfWeek) return false;
+          const w = s.rule_window;
+          if (!w) return true;
+          if (dateStr < w.starts_on) return false;
+          if (w.ends_on && dateStr > w.ends_on) return false;
+          return true;
+        });
+        if (daySlots.length === 0) return null;
 
         return (
           <div key={dateStr}>
