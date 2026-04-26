@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendBookingConfirmation } from "@/lib/email/send";
+import { notifyBooking } from "@/lib/email/notify-booking";
 import { getStudioId } from "@/lib/studio-context";
 import {
   isBookingClosed,
@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await sendBookingConfirmation({
-      profileId: user.id,
+    await notifyBooking({
       studioId,
+      profileId: user.id,
       scheduleId: schedule_id,
       date,
       paymentMethod: "pack_credit",
