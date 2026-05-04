@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingCancellation } from "@/lib/email/send";
+import { notifyCancellation } from "@/lib/email/notify-cancellation";
 import { getStudioId } from "@/lib/studio-context";
 import { incrementPackCredit } from "@/lib/booking-helpers";
 
@@ -88,6 +89,15 @@ export async function POST(request: NextRequest) {
       date: booking.date,
       creditRefunded,
       paymentMethod: booking.payment_method,
+    });
+
+    await notifyCancellation({
+      studioId,
+      profileId: user.id,
+      scheduleId: booking.schedule_id,
+      date: booking.date,
+      paymentMethod: booking.payment_method,
+      cancelledBy: "member",
     });
 
     return NextResponse.json({ success: true, creditRefunded });
