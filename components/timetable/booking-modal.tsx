@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import ClassIcon from "@/components/classes/class-icons";
 import CheckoutModal from "@/components/checkout/checkout-modal";
+import { CLOSE_POPUPS_EVENT } from "@/components/member-profile/member-profile-context";
 import type { TimetableSlot } from "@/lib/types";
 
 export default function BookingModal({
@@ -36,6 +37,12 @@ export default function BookingModal({
   const supabase = createClient();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const handler = () => onClose();
+    window.addEventListener(CLOSE_POPUPS_EVENT, handler);
+    return () => window.removeEventListener(CLOSE_POPUPS_EVENT, handler);
+  }, [onClose]);
 
   useEffect(() => {
     async function loadUser() {

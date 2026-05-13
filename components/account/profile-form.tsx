@@ -4,19 +4,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { localDateStr } from "@/lib/date-utils";
+import { isValidUKPhone, toE164UK } from "@/lib/phone-utils";
 import { useToast } from "@/components/ui/toast";
 
 export default function ProfileForm({
   initialName,
   email,
   initialDateOfBirth,
+  initialPhone,
 }: {
   initialName: string;
   email: string;
   initialDateOfBirth: string;
+  initialPhone: string;
 }) {
   const [fullName, setFullName] = useState(initialName);
   const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+  const [phone, setPhone] = useState(initialPhone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -50,6 +54,13 @@ export default function ProfileForm({
       }
     }
 
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone && !isValidUKPhone(trimmedPhone)) {
+      setError("Please enter a valid UK phone number (e.g. 07700 900123).");
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -64,6 +75,7 @@ export default function ProfileForm({
       .update({
         full_name: trimmed,
         ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
+        phone: trimmedPhone ? toE164UK(trimmedPhone) : null,
       })
       .eq("id", user.id);
 
@@ -123,6 +135,24 @@ export default function ProfileForm({
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">
           We&apos;ll send you a free class on your birthday each year.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-[0.72rem] font-semibold tracking-[0.08em] uppercase text-warm-grey mb-1.5">
+          Mobile number
+        </label>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder="07700 900123"
+          className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors"
+        />
+        <p className="text-[0.68rem] text-warm-grey mt-1">
+          So we can reach you about your bookings if needed.
         </p>
       </div>
 

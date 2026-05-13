@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { CLOSE_POPUPS_EVENT } from "@/components/member-profile/member-profile-context";
 
 interface CancelBookingModalProps {
   bookingId: string;
@@ -59,6 +60,12 @@ export default function CancelBookingModal({
   const [error, setError] = useState("");
 
   const refundInfo = getRefundInfo(paymentMethod);
+
+  useEffect(() => {
+    const handler = () => onClose();
+    window.addEventListener(CLOSE_POPUPS_EVENT, handler);
+    return () => window.removeEventListener(CLOSE_POPUPS_EVENT, handler);
+  }, [onClose]);
 
   async function handleConfirm() {
     setLoading(true);

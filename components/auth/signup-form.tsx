@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { localDateStr } from "@/lib/date-utils";
+import { isValidUKPhone, toE164UK } from "@/lib/phone-utils";
 
 export default function SignupForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +43,13 @@ export default function SignupForm() {
       return;
     }
 
+    if (!isValidUKPhone(phone)) {
+      setError("Please enter a valid UK phone number (e.g. 07700 900123).");
+      setLoading(false);
+      return;
+    }
+
+    const phoneE164 = toE164UK(phone);
     const studioId = process.env.NEXT_PUBLIC_STUDIO_ID;
 
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -49,6 +58,7 @@ export default function SignupForm() {
       options: {
         data: {
           full_name: fullName,
+          phone: phoneE164,
           ...(studioId && { studio_id: studioId }),
           ...(dateOfBirth && { date_of_birth: dateOfBirth }),
         },
@@ -192,6 +202,26 @@ export default function SignupForm() {
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">
           You must be 18 or over to sign up. We&apos;ll also send you a free class on your birthday each year.
+        </p>
+      </div>
+
+      {/* Phone number */}
+      <div>
+        <label className="block text-[0.72rem] font-semibold tracking-[0.08em] uppercase text-warm-grey mb-1.5">
+          Mobile number
+        </label>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+          autoComplete="tel"
+          inputMode="tel"
+          className="w-full px-4 py-3 bg-white border border-sand rounded-xl text-[0.88rem] text-cocoa placeholder:text-warm-grey/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all"
+          placeholder="07700 900123"
+        />
+        <p className="text-[0.68rem] text-warm-grey mt-1">
+          So we can reach you about your bookings if needed.
         </p>
       </div>
 

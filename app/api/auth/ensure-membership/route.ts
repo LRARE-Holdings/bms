@@ -31,12 +31,16 @@ export async function POST() {
       role: "member",
     });
 
-    // Save date_of_birth from signup metadata to profile
+    // Save date_of_birth and phone from signup metadata to profile
     const dob = user.user_metadata?.date_of_birth;
-    if (dob) {
+    const phone = user.user_metadata?.phone;
+    const profileUpdate: Record<string, string> = {};
+    if (dob) profileUpdate.date_of_birth = dob;
+    if (phone) profileUpdate.phone = phone;
+    if (Object.keys(profileUpdate).length > 0) {
       await adminClient
         .from("profiles")
-        .update({ date_of_birth: dob })
+        .update(profileUpdate)
         .eq("id", user.id);
     }
 

@@ -5,6 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { getStripeClient } from "@/lib/stripe-client";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { CLOSE_POPUPS_EVENT } from "@/components/member-profile/member-profile-context";
 import type { CheckoutType } from "@/lib/types";
 
 interface CheckoutModalProps {
@@ -86,6 +87,12 @@ export default function CheckoutModal(props: CheckoutModalProps) {
 
     init();
   }, [props.type, props.scheduleId, props.date, props.tierId, props.waitlistToken]);
+
+  useEffect(() => {
+    const handler = () => props.onClose();
+    window.addEventListener(CLOSE_POPUPS_EVENT, handler);
+    return () => window.removeEventListener(CLOSE_POPUPS_EVENT, handler);
+  }, [props]);
 
   return (
     <div

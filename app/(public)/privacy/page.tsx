@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <ProsePage title="Privacy Policy" lastUpdated="March 2026">
+    <ProsePage title="Privacy Policy" lastUpdated="May 2026">
       <h2>Data Controller</h2>
       <p>
         Lucy Healy, trading as Burn Mat Studio, is the data controller for
@@ -17,6 +17,7 @@ export default function PrivacyPage() {
       <h2>What We Collect</h2>
       <ul>
         <li><strong>Account information:</strong> name, email address, and password when you create an account.</li>
+        <li><strong>Mobile phone number:</strong> collected at sign-up so the studio can contact you about your bookings (for example, to notify you of late changes or to confirm attendance).</li>
         <li><strong>Date of birth:</strong> collected to verify you are 18 or over, and to send you a complimentary birthday class each year.</li>
         <li><strong>Booking data:</strong> class selections, dates, and attendance history.</li>
         <li><strong>Payment data:</strong> processed securely by Stripe. We do not store card details.</li>
@@ -49,6 +50,7 @@ export default function PrivacyPage() {
       <ul>
         <li>To manage your bookings and class pack credits.</li>
         <li>To send booking confirmations, cancellations, and pack receipts via email.</li>
+        <li>To contact you by phone about your bookings when needed (for example, last-minute studio changes).</li>
         <li>To communicate important studio updates.</li>
       </ul>
 

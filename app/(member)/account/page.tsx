@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import TimetableView from "@/components/timetable/timetable-view";
 import AccountHeader from "@/components/account/account-header";
+import PhonePromptBanner from "@/components/account/phone-prompt-banner";
 import { getStudioId } from "@/lib/studio-context";
 
 export const metadata = {
@@ -18,6 +19,7 @@ export default async function AccountPage() {
         title="Class timetable"
         subtitle="Browse the weekly schedule and book your spot. Use a pack credit or pay per class."
       />
+      <PhonePromptBanner />
       <TimetableView studioId={studioId} />
     </section>
   );

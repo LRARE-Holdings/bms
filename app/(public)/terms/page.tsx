@@ -7,7 +7,19 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <ProsePage title="Terms &amp; Conditions" lastUpdated="March 2026">
+    <ProsePage title="Terms &amp; Conditions" lastUpdated="May 2026">
+      <h2>Account Information</h2>
+      <p>
+        When you create an account you agree to provide accurate personal
+        details, including your full name, date of birth, email address, and a
+        mobile phone number on which the studio can reach you. You are
+        responsible for keeping this information up to date via your profile.
+        The studio may use the contact details you provide to communicate with
+        you about your bookings &mdash; see our{" "}
+        <Link href="/privacy" className="text-gold underline underline-offset-2 hover:text-cocoa transition-colors">Privacy Policy</Link>{" "}
+        for full details on how your data is handled.
+      </p>
+
       <h2>Bookings</h2>
       <p>
         All bookings are subject to availability. Classes are capped at 10
