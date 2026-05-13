@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import CookieBanner from "@/components/layout/cookie-banner";
 import { ToastProvider } from "@/components/ui/toast";
-import MemberProfileProvider from "@/components/member-profile/member-profile-provider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -36,10 +35,8 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
       <body className="min-h-screen flex flex-col">
         <ToastProvider>
-          <MemberProfileProvider>
-            {children}
-            <CookieBanner />
-          </MemberProfileProvider>
+          {children}
+          <CookieBanner />
         </ToastProvider>
         <Analytics />
         <SpeedInsights />
