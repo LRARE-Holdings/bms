@@ -49,13 +49,15 @@ export default function LoginForm({ studioId }: { studioId: string }) {
         .eq("studio_id", studioId)
         .single();
 
-      if (membership?.role === "admin") {
-        router.push("/dashboard");
-      } else if (membership?.role === "staff") {
-        router.push("/staff");
-      } else {
-        router.push("/account");
+      const role = membership?.role;
+      if (role === "admin" || role === "staff") {
+        const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
+        if (adminUrl) {
+          window.location.href = adminUrl;
+          return;
+        }
       }
+      router.push("/account");
     } else {
       router.push("/account");
     }
