@@ -130,13 +130,30 @@ export async function POST(request: NextRequest) {
 
   let packResult: { packId: string; previousCredits: number } | null = null;
   if (payment_method === "pack_credit") {
-    packResult = await decrementPackCredit(supabase, entry.profile_id, studioId);
-    if (!packResult) {
-      return NextResponse.json(
-        { error: "No pack credits available" },
-        { status: 400 }
-      );
+    // Look up the class so we can honour any pack tier exclusions.
+    const { data: scheduleSlot } = await supabase
+      .from("schedule")
+      .select("class_id")
+      .eq("id", entry.schedule_id)
+      .eq("studio_id", studioId)
+      .single();
+
+    const classId = (scheduleSlot?.class_id as string | undefined) ?? null;
+
+    const result = await decrementPackCredit(
+      supabase,
+      entry.profile_id,
+      studioId,
+      classId,
+    );
+    if (!result.ok) {
+      const error =
+        result.reason === "class_excluded"
+          ? "Your pack credits can't be used for this class."
+          : "No pack credits available";
+      return NextResponse.json({ error }, { status: 400 });
     }
+    packResult = { packId: result.packId, previousCredits: result.previousCredits };
   }
 
   // Create booking — bypass capacity check since the spot was held for them

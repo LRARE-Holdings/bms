@@ -111,9 +111,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Atomically decrement pack credits (optimistic lock prevents race conditions)
-    const packResult = await decrementPackCredit(admin, user.id, studioId);
-    if (!packResult) {
-      return NextResponse.json({ error: "No credits available" }, { status: 400 });
+    const packResult = await decrementPackCredit(
+      admin,
+      user.id,
+      studioId,
+      scheduleSlot.class_id,
+    );
+    if (!packResult.ok) {
+      const error =
+        packResult.reason === "class_excluded"
+          ? "Your pack credits can't be used for this class."
+          : "No credits available";
+      return NextResponse.json({ error }, { status: 400 });
     }
 
     // Create booking

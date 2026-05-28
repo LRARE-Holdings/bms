@@ -136,39 +136,64 @@ export async function getBookingCount(
 
 /**
  * Atomically decrement pack credits by 1.
- * Uses a conditional update that only succeeds if credits > 0.
- * Returns the pack ID if successful, or null if no credits available.
+ *
+ * When a classId is provided, packs whose pack_tier excludes that class are
+ * skipped. Packs with a null pack_tier_id (legacy or manually-issued credits)
+ * are always eligible.
+ *
+ * Returns ok=false with a reason when nothing can be decremented so the caller
+ * can distinguish "no credits at all" from "credits exist but none cover this
+ * class".
  */
 const MAX_DECREMENT_RETRIES = 3;
+
+export type DecrementPackResult =
+  | { ok: true; packId: string; previousCredits: number }
+  | { ok: false; reason: "no_credits" | "class_excluded" };
 
 export async function decrementPackCredit(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
   studioId: string,
+  classId: string | null,
   _retries = 0
-): Promise<{ packId: string; previousCredits: number } | null> {
-  // Find the user's oldest valid pack with credits
+): Promise<DecrementPackResult> {
+  const excludedTierIds = classId
+    ? await getExcludedPackTierIds(supabase, classId)
+    : [];
+
+  // Pull the user's valid packs in age order; we'll filter eligibility in JS
+  // so we don't have to fight PostgREST's OR/IN syntax for the exclusion list.
   const { data: packs } = await supabase
     .from("class_packs")
-    .select("id, credits_remaining")
+    .select("id, credits_remaining, pack_tier_id")
     .eq("profile_id", userId)
     .eq("studio_id", studioId)
     .gt("credits_remaining", 0)
     .gt("expires_at", new Date().toISOString())
-    .order("purchased_at", { ascending: true })
-    .limit(1);
+    .order("purchased_at", { ascending: true });
 
-  if (!packs || packs.length === 0) return null;
+  if (!packs || packs.length === 0) {
+    return { ok: false, reason: "no_credits" };
+  }
 
-  const pack = packs[0];
+  const eligiblePack = packs.find((p) => {
+    const tierId = p.pack_tier_id as string | null;
+    if (!tierId) return true;
+    return !excludedTierIds.includes(tierId);
+  });
 
-  // Atomically decrement — the .gt guard ensures we don't go below 0
-  // even if another request decremented between our read and write
+  if (!eligiblePack) {
+    return { ok: false, reason: "class_excluded" };
+  }
+
+  // Atomically decrement — the .eq guard ensures we don't double-decrement
+  // when another request changed the value between read and write
   const { data: updated, error } = await supabase
     .from("class_packs")
-    .update({ credits_remaining: pack.credits_remaining - 1 })
-    .eq("id", pack.id)
-    .eq("credits_remaining", pack.credits_remaining) // Optimistic lock: only succeed if value unchanged
+    .update({ credits_remaining: eligiblePack.credits_remaining - 1 })
+    .eq("id", eligiblePack.id)
+    .eq("credits_remaining", eligiblePack.credits_remaining)
     .select("id")
     .single();
 
@@ -176,12 +201,28 @@ export async function decrementPackCredit(
     // Optimistic lock failed — another request modified this pack.
     // Retry with fresh data, up to a maximum number of attempts.
     if (_retries < MAX_DECREMENT_RETRIES) {
-      return decrementPackCredit(supabase, userId, studioId, _retries + 1);
+      return decrementPackCredit(supabase, userId, studioId, classId, _retries + 1);
     }
-    return null;
+    return { ok: false, reason: "no_credits" };
   }
 
-  return { packId: pack.id, previousCredits: pack.credits_remaining };
+  return {
+    ok: true,
+    packId: eligiblePack.id,
+    previousCredits: eligiblePack.credits_remaining,
+  };
+}
+
+async function getExcludedPackTierIds(
+  supabase: ReturnType<typeof createAdminClient>,
+  classId: string
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("pack_tier_excluded_classes")
+    .select("pack_tier_id")
+    .eq("class_id", classId);
+
+  return (data ?? []).map((row) => row.pack_tier_id as string);
 }
 
 /**

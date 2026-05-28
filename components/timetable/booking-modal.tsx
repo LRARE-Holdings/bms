@@ -55,7 +55,7 @@ export default function BookingModal({
             .limit(1),
           supabase
             .from("class_packs")
-            .select("credits_remaining")
+            .select("credits_remaining, pack_tier_id")
             .eq("profile_id", user.id)
             .eq("studio_id", studioId)
             .gt("credits_remaining", 0)
@@ -77,12 +77,37 @@ export default function BookingModal({
           !!membershipResult.data && membershipResult.data.length > 0
         );
 
-        const total =
-          packsResult.data?.reduce(
-            (sum, p) => sum + p.credits_remaining,
-            0
-          ) ?? 0;
-        setPackCredits(total);
+        // Filter packs whose tier excludes this class. Packs with no tier
+        // (manual/legacy credits) are always eligible.
+        const userPacks = packsResult.data ?? [];
+        const userTierIds = Array.from(
+          new Set(
+            userPacks
+              .map((p) => p.pack_tier_id as string | null)
+              .filter((id): id is string => !!id),
+          ),
+        );
+
+        let excludedTierIds = new Set<string>();
+        if (userTierIds.length > 0) {
+          const { data: exclusions } = await supabase
+            .from("pack_tier_excluded_classes")
+            .select("pack_tier_id")
+            .eq("class_id", slot.class_id)
+            .in("pack_tier_id", userTierIds);
+          excludedTierIds = new Set(
+            (exclusions ?? []).map((e) => e.pack_tier_id as string),
+          );
+        }
+
+        const eligible = userPacks
+          .filter((p) => {
+            const tierId = p.pack_tier_id as string | null;
+            if (!tierId) return true;
+            return !excludedTierIds.has(tierId);
+          })
+          .reduce((sum, p) => sum + p.credits_remaining, 0);
+        setPackCredits(eligible);
 
         const offerEnabled = studioResult.data?.first_class_free_enabled ?? false;
         const alreadyUsed = smResult.data?.free_class_used ?? true;
@@ -125,7 +150,7 @@ export default function BookingModal({
       }
     }
     loadUser();
-  }, [supabase, studioId, searchParams]);
+  }, [supabase, studioId, searchParams, slot.class_id, slot.schedule_id, slot.date, mode]);
 
   const priceDisplay =
     slot.price_pence % 100 === 0

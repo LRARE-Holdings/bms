@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
 
       return {
         schedule_id: slot.id,
+        class_id: cls.id,
         day_of_week: slot.day_of_week,
         start_time: slot.start_time,
         end_time: slot.end_time,

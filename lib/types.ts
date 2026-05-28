@@ -146,6 +146,7 @@ export type CheckoutType = "dropin" | "pack" | "membership" | "waitlist_claim";
 // Composite types for joined queries
 export interface TimetableSlot {
   schedule_id: string;
+  class_id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;

@@ -48,6 +48,28 @@ export default async function PacksPage() {
     ]);
 
   const tiers = (packTiers || []) as PackTier[];
+  const classNameById = new Map(
+    ((classes as Class[]) ?? []).map((c) => [c.id, c.name]),
+  );
+
+  const exclusionsByTier: Record<string, string[]> = {};
+  if (tiers.length > 0) {
+    const { data: exclusions } = await supabase
+      .from("pack_tier_excluded_classes")
+      .select("pack_tier_id, class_id")
+      .in(
+        "pack_tier_id",
+        tiers.map((t) => t.id),
+      );
+
+    for (const row of exclusions ?? []) {
+      const tierId = row.pack_tier_id as string;
+      const className = classNameById.get(row.class_id as string);
+      if (!className) continue;
+      if (!exclusionsByTier[tierId]) exclusionsByTier[tierId] = [];
+      exclusionsByTier[tierId].push(className);
+    }
+  }
 
   return (
     <section className="py-10 px-5 md:px-10 max-w-[1100px]">
@@ -108,6 +130,15 @@ export default async function PacksPage() {
                   <p className="text-[0.68rem] text-warm-grey">
                     {formatValidity(tier.validity_days)}
                   </p>
+                  {exclusionsByTier[tier.id]?.length > 0 && (
+                    <p
+                      className={`mt-2 text-[0.65rem] leading-snug ${
+                        isBestValue ? "text-wheat/70" : "text-warm-grey"
+                      }`}
+                    >
+                      Excludes: {exclusionsByTier[tier.id].join(", ")}
+                    </p>
+                  )}
                   <BuyPackButton
                     tierId={tier.id}
                     profileId={user.id}
