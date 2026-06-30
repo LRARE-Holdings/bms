@@ -177,6 +177,81 @@ function MatPilatesFlow() {
   );
 }
 
+/** Barre — arabesque at the ballet barre */
+function Barre() {
+  return (
+    <svg {...iconProps}>
+      {/* Head */}
+      <circle cx="14" cy="10" r="2.5" />
+      {/* Torso — slight forward lean */}
+      <path d="M14 12.5L17 21" />
+      {/* Supporting leg with pointed toe */}
+      <path d="M17 21L16 32" />
+      <path d="M16 32L13.5 33" />
+      {/* Lifted leg — arabesque extended behind */}
+      <path d="M17 21L31 16.5" />
+      <path d="M31 16.5L33.5 15.5" />
+      {/* Front arm reaching to the barre */}
+      <path d="M16 15L25 13" />
+      {/* Back arm for balance */}
+      <path d="M16 15L10.5 18" />
+      {/* Ballet barre with mounting brackets */}
+      <path d="M25 13L40 13" strokeWidth="1.2" />
+      <path d="M28 13L28 16" strokeWidth="1" opacity="0.4" />
+      <path d="M37 13L37 16" strokeWidth="1" opacity="0.4" />
+    </svg>
+  );
+}
+
+/** Boxercise — boxing stance throwing a jab, gloves as fists */
+function Boxercise() {
+  return (
+    <svg {...iconProps}>
+      {/* Head */}
+      <circle cx="15" cy="9" r="2.5" />
+      {/* Torso */}
+      <path d="M15 11.5L17 21" />
+      {/* Boxing stance — staggered legs */}
+      <path d="M17 21L12 31" />
+      <path d="M17 21L23 30" />
+      {/* Guard arm — bent, fist up by the chin */}
+      <path d="M16 14L20 13.5L19.5 10.5" />
+      {/* Jab arm — extended forward */}
+      <path d="M16 15.5L26.5 16.5" />
+      {/* Gloves (fists) */}
+      <line x1="18.5" y1="10" x2="20.5" y2="11" strokeWidth="3" strokeLinecap="round" />
+      <line x1="25.5" y1="16" x2="28.5" y2="17" strokeWidth="3" strokeLinecap="round" />
+      {/* Punch motion lines */}
+      <path d="M31 16.5L34 16.5" strokeWidth="1.2" opacity="0.4" />
+      <path d="M31 19L33.5 20" strokeWidth="1.2" opacity="0.4" />
+    </svg>
+  );
+}
+
+/** Mindful Infrared Pilates — seated meditation with infrared waves */
+function MindfulInfraredPilates() {
+  return (
+    <svg {...iconProps}>
+      {/* Head */}
+      <circle cx="22" cy="12" r="2.5" />
+      {/* Upright torso */}
+      <path d="M22 14.5V24" />
+      {/* Crossed legs — seated base */}
+      <path d="M22 24L13 30" />
+      <path d="M22 24L31 30" />
+      <path d="M13 30L31 30" />
+      {/* Arms resting on knees */}
+      <path d="M22 17L15.5 28" />
+      <path d="M22 17L28.5 28" />
+      {/* Infrared waves radiating outward */}
+      <path d="M9 18c0-2.5 1.2-4.5 3-6" strokeWidth="1" opacity="0.35" />
+      <path d="M6 19c0-3.5 1.8-6.5 4.5-8.5" strokeWidth="1" opacity="0.2" />
+      <path d="M35 18c0-2.5-1.2-4.5-3-6" strokeWidth="1" opacity="0.35" />
+      <path d="M38 19c0-3.5-1.8-6.5-4.5-8.5" strokeWidth="1" opacity="0.2" />
+    </svg>
+  );
+}
+
 const CLASS_ICONS: Record<string, React.FC> = {
   "hot-pilates": HotPilates,
   "hot-yoga": HotYoga,
@@ -185,6 +260,9 @@ const CLASS_ICONS: Record<string, React.FC> = {
   "beginners-pilates": BeginnersPilates,
   "infrared-sculpt-swt-pilates": InfraredSculptSwt,
   "mat-pilates-flow": MatPilatesFlow,
+  barre: Barre,
+  "boxercise-girls-only": Boxercise,
+  "mindful-infrared-pilates-mixed-level": MindfulInfraredPilates,
 };
 
 export default function ClassIcon({ slug }: { slug: string }) {

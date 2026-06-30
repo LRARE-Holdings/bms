@@ -1,18 +1,9 @@
 "use client";
 
 import type { TimetableSlot } from "@/lib/types";
+import { classTheme } from "@/lib/class-theme";
 
 const BOOKING_CUTOFF_MINS = 30;
-
-const colorMap: Record<string, string> = {
-  "hot-pilates": "bg-ember",
-  "hot-yoga": "bg-ember",
-  "pilates-sculpt": "bg-gold",
-  "cardio-pilates": "bg-blush",
-  "beginners-pilates": "bg-sand",
-  "infrared-sculpt-swt-pilates": "bg-ember",
-  "mat-pilates-flow": "bg-gold",
-};
 
 function isDatePast(dateStr: string): boolean {
   const slotDate = new Date(dateStr + "T23:59:59");
@@ -38,7 +29,7 @@ export default function SlotCard({
   onBook: () => void;
   onWaitlist?: () => void;
 }) {
-  const barColor = colorMap[slot.class_slug] ?? "bg-gold";
+  const barColor = classTheme(slot.class_slug).bar;
   const isPast = isDatePast(slot.date);
   const isFull = slot.spots_remaining <= 0;
   const isClosed = !isFull && !isPast && isBookingClosed(slot);
