@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
+import { isUuid } from "@/lib/uuid";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,17 @@ export default async function BirthdayPage({
   const studioId = await getStudioId();
   const supabase = createAdminClient();
 
-  const { data: birthdayToken } = await supabase
-    .from("birthday_tokens")
-    .select("id, status, expires_at, profile_id")
-    .eq("token", token)
-    .eq("studio_id", studioId)
-    .single();
+  // Skip the query for a malformed token — birthday_tokens.token is a uuid
+  // column, so a non-uuid value (e.g. "/birthday/undefined") would raise a
+  // Postgres 22P02 error. Fall through to the "Invalid link" UI below instead.
+  const { data: birthdayToken } = isUuid(token)
+    ? await supabase
+        .from("birthday_tokens")
+        .select("id, status, expires_at, profile_id")
+        .eq("token", token)
+        .eq("studio_id", studioId)
+        .single()
+    : { data: null };
 
   // Invalid token
   if (!birthdayToken) {

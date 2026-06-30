@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
+import { isUuid } from "@/lib/uuid";
 import WaitlistClaimClient from "./claim-client";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +18,14 @@ export default async function WaitlistClaimPage({
   const studioId = await getStudioId();
   const supabase = createAdminClient();
 
-  // Look up the waitlist entry with schedule + class + instructor details
-  const { data: entry } = await supabase
-    .from("waitlist")
-    .select(`
+  // Look up the waitlist entry with schedule + class + instructor details.
+  // Skip the query for a malformed token — claim_token is a uuid column, so a
+  // non-uuid value (e.g. "/waitlist/claim/undefined") would raise a Postgres
+  // 22P02 error. Fall through to the "Invalid link" UI below instead.
+  const { data: entry } = isUuid(token)
+    ? await supabase
+        .from("waitlist")
+        .select(`
       id,
       status,
       expires_at,
@@ -33,9 +38,10 @@ export default async function WaitlistClaimPage({
         instructors(name)
       )
     `)
-    .eq("claim_token", token)
-    .eq("studio_id", studioId)
-    .single();
+        .eq("claim_token", token)
+        .eq("studio_id", studioId)
+        .single()
+    : { data: null };
 
   if (!entry) {
     return (
