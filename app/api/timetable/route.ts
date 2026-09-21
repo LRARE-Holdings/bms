@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
+import {
+  PRICING_COLUMNS,
+  effectivePricePence,
+  isDiscountActive,
+} from "@/lib/pricing";
+import type { DiscountableClass } from "@/lib/pricing";
 
 const DEFAULT_MAX_CAPACITY = 10;
 
@@ -46,7 +52,7 @@ export async function GET(request: NextRequest) {
       start_time,
       end_time,
       rule_id,
-      classes!inner(name, slug, duration_mins, price_pence, capacity),
+      classes!inner(name, slug, duration_mins, capacity, ${PRICING_COLUMNS}),
       instructors!inner(name),
       schedule_rules(starts_on, ends_on)
     `)
@@ -112,7 +118,7 @@ export async function GET(request: NextRequest) {
   // Build response — filter out skipped and holiday slots
   const slots = (scheduleSlots || [])
     .map((slot: Record<string, unknown>) => {
-      const cls = slot.classes as Record<string, unknown>;
+      const cls = slot.classes as Record<string, unknown> & DiscountableClass;
       const instructor = slot.instructors as Record<string, unknown>;
       const ruleRel = slot.schedule_rules as
         | { starts_on: string; ends_on: string | null }
@@ -140,6 +146,8 @@ export async function GET(request: NextRequest) {
         class_slug: cls.slug,
         duration_mins: cls.duration_mins,
         price_pence: cls.price_pence,
+        effective_price_pence: effectivePricePence(cls),
+        discount_percent: isDiscountActive(cls) ? cls.discount_percent : null,
         max_capacity: maxCapacity,
         instructor_name: instructor.name,
         booking_count: bookingCount,

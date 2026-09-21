@@ -9,7 +9,8 @@ import {
   isClassSkipped,
   getBookingCount,
   getClassCapacity,
-  decrementPackCredit,
+  findEligiblePack,
+  spendPackCredit,
   validateBookingDay,
   isBeyondBookingHorizon,
 } from "@/lib/booking-helpers";
@@ -110,8 +111,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atomically decrement pack credits (optimistic lock prevents race conditions)
-    const packResult = await decrementPackCredit(
+    // Work out which pack pays, but don't charge it yet.
+    const packResult = await findEligiblePack(
       admin,
       user.id,
       studioId,
@@ -125,26 +126,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    // Create booking
-    const { error: bookingError } = await admin.from("bookings").insert({
-      studio_id: studioId,
-      schedule_id,
-      profile_id: user.id,
-      date,
-      status: "confirmed",
-      payment_method: "pack_credit",
-    });
+    // Create booking. class_pack_id is what lets a later cancellation return the
+    // credit to the pack that actually paid, rather than guessing at the
+    // member's packs and often picking an expired one.
+    const { data: booking, error: bookingError } = await admin
+      .from("bookings")
+      .insert({
+        studio_id: studioId,
+        schedule_id,
+        profile_id: user.id,
+        date,
+        status: "confirmed",
+        payment_method: "pack_credit",
+        class_pack_id: packResult.packId,
+      })
+      .select("id")
+      .single();
 
     if (bookingError) {
       console.error("Booking insert error:", bookingError);
-      // Roll back credit
-      await admin
-        .from("class_packs")
-        .update({ credits_remaining: packResult.previousCredits })
-        .eq("id", packResult.packId);
-
+      // 23514 = a pack's weekly limit, e.g. the Beginner's Course allows two
+      // classes a week. The database writes that message for the member.
+      const status = bookingError.code === "23514" ? 400 : 500;
       return NextResponse.json(
         { error: bookingError.message || "Failed to create booking" },
+        { status }
+      );
+    }
+
+    // Booking is in — now charge the credit. Nothing was spent if we never got
+    // here, so there is no rollback to do.
+    const charged = await spendPackCredit(admin, packResult.packId, booking.id);
+    if (!charged) {
+      await admin.from("bookings").delete().eq("id", booking.id);
+      return NextResponse.json(
+        { error: "Could not use your credit for this booking. Please try again." },
         { status: 500 }
       );
     }

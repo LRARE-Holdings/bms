@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
 import { isUuid } from "@/lib/uuid";
 import WaitlistClaimClient from "./claim-client";
+import { PRICING_COLUMNS, effectivePricePence } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function WaitlistClaimPage({
       profile_id,
       schedule:schedule_id(
         start_time,
-        classes(name, slug, duration_mins, price_pence),
+        classes(name, slug, duration_mins, ${PRICING_COLUMNS}),
         instructors(name)
       )
     `)
@@ -74,7 +75,8 @@ export default async function WaitlistClaimPage({
   const className = cls?.name || "Class";
   const startTime = sched?.start_time?.slice(0, 5) || "";
   const durationMins = cls?.duration_mins || 0;
-  const pricePence = cls?.price_pence || 0;
+  // Charge today's price, matching what checkout will actually take.
+  const pricePence = cls ? effectivePricePence(cls) : 0;
   const instructorName = inst?.name || "Instructor";
 
   const dateObj = new Date(entry.date + "T00:00:00");

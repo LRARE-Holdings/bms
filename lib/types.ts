@@ -45,7 +45,11 @@ export interface Class {
   slug: string;
   description: string;
   duration_mins: number;
+  /** List price. A running discount is applied on top, never written into this. */
   price_pence: number;
+  discount_percent: number | null;
+  discount_starts_on: string | null;
+  discount_ends_on: string | null;
   image_url: string | null;
   stripe_product_id: string | null;
   stripe_price_id: string | null;
@@ -154,6 +158,10 @@ export interface TimetableSlot {
   class_slug: string;
   duration_mins: number;
   price_pence: number;
+  /** Today's price. Equals price_pence unless a discount window is open. */
+  effective_price_pence?: number;
+  /** Set only while a discount is actually running. */
+  discount_percent?: number | null;
   max_capacity: number;
   instructor_name: string;
   booking_count: number;

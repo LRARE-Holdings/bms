@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import ClassIcon from "@/components/classes/class-icons";
 import CheckoutModal from "@/components/checkout/checkout-modal";
 import type { TimetableSlot } from "@/lib/types";
+import PriceTag from "@/components/pricing/price-tag";
 
 export default function BookingModal({
   slot,
@@ -152,10 +153,8 @@ export default function BookingModal({
     loadUser();
   }, [supabase, studioId, searchParams, slot.class_id, slot.schedule_id, slot.date, mode]);
 
-  const priceDisplay =
-    slot.price_pence % 100 === 0
-      ? `\u00a3${slot.price_pence / 100}`
-      : `\u00a3${(slot.price_pence / 100).toFixed(2)}`;
+  const effectivePence = slot.effective_price_pence ?? slot.price_pence;
+  const discountPercent = slot.discount_percent ?? null;
 
   const time = slot.start_time.slice(0, 5);
   const dateObj = new Date(slot.date + "T00:00:00");
@@ -600,7 +599,11 @@ export default function BookingModal({
                       </span>
                     </div>
                     <span className="font-display text-lg font-semibold text-cocoa">
-                      {priceDisplay}
+                      <PriceTag
+                        pricePence={slot.price_pence}
+                        effectivePence={effectivePence}
+                        discountPercent={discountPercent}
+                      />
                     </span>
                   </button>
 
@@ -662,7 +665,11 @@ export default function BookingModal({
                       </span>
                     </div>
                     <span className="font-display text-lg font-semibold text-cocoa">
-                      {priceDisplay}
+                      <PriceTag
+                        pricePence={slot.price_pence}
+                        effectivePence={effectivePence}
+                        discountPercent={discountPercent}
+                      />
                     </span>
                   </button>
 

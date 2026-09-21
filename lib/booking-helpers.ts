@@ -145,24 +145,31 @@ export async function getBookingCount(
  * can distinguish "no credits at all" from "credits exist but none cover this
  * class".
  */
-const MAX_DECREMENT_RETRIES = 3;
-
-export type DecrementPackResult =
-  | { ok: true; packId: string; previousCredits: number }
+export type EligiblePackResult =
+  | { ok: true; packId: string }
   | { ok: false; reason: "no_credits" | "class_excluded" };
 
-export async function decrementPackCredit(
+/**
+ * Pick which pack should pay for a booking, without touching it.
+ *
+ * Choosing and charging used to happen in one step, which meant a credit was
+ * already spent by the time the booking insert ran — and if that insert failed,
+ * the caller had to remember to put the credit back. Callers now pick the pack,
+ * write the booking with `class_pack_id` on it, then call `spend_pack_credit`.
+ * A failed insert costs nothing, and the ledger can name the booking that spent
+ * the credit.
+ */
+export async function findEligiblePack(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
   studioId: string,
-  classId: string | null,
-  _retries = 0
-): Promise<DecrementPackResult> {
+  classId: string | null
+): Promise<EligiblePackResult> {
   const excludedTierIds = classId
     ? await getExcludedPackTierIds(supabase, classId)
     : [];
 
-  // Pull the user's valid packs in age order; we'll filter eligibility in JS
+  // Pull the user's valid packs in age order; we filter eligibility in JS
   // so we don't have to fight PostgREST's OR/IN syntax for the exclusion list.
   const { data: packs } = await supabase
     .from("class_packs")
@@ -187,30 +194,32 @@ export async function decrementPackCredit(
     return { ok: false, reason: "class_excluded" };
   }
 
-  // Atomically decrement — the .eq guard ensures we don't double-decrement
-  // when another request changed the value between read and write
-  const { data: updated, error } = await supabase
-    .from("class_packs")
-    .update({ credits_remaining: eligiblePack.credits_remaining - 1 })
-    .eq("id", eligiblePack.id)
-    .eq("credits_remaining", eligiblePack.credits_remaining)
-    .select("id")
-    .single();
+  return { ok: true, packId: eligiblePack.id as string };
+}
 
-  if (error || !updated) {
-    // Optimistic lock failed — another request modified this pack.
-    // Retry with fresh data, up to a maximum number of attempts.
-    if (_retries < MAX_DECREMENT_RETRIES) {
-      return decrementPackCredit(supabase, userId, studioId, classId, _retries + 1);
-    }
-    return { ok: false, reason: "no_credits" };
+/**
+ * Charge one credit to a specific pack.
+ *
+ * The database function locks the pack row, so two bookings racing for a
+ * member's last credit can no longer both win — which the previous
+ * read-then-write with a retry loop could not fully prevent. It also records the
+ * debit against this booking in `credit_transactions`.
+ */
+export async function spendPackCredit(
+  supabase: ReturnType<typeof createAdminClient>,
+  packId: string,
+  bookingId: string
+): Promise<boolean> {
+  const { error } = await supabase.rpc("spend_pack_credit", {
+    p_pack_id: packId,
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    console.error(`spend_pack_credit failed for pack ${packId}:`, error.message);
+    return false;
   }
-
-  return {
-    ok: true,
-    packId: eligiblePack.id,
-    previousCredits: eligiblePack.credits_remaining,
-  };
+  return true;
 }
 
 async function getExcludedPackTierIds(
@@ -226,33 +235,34 @@ async function getExcludedPackTierIds(
 }
 
 /**
- * Re-increment a pack credit (used on booking cancellation).
- * Only re-credits up to credits_total.
+ * Return the credit a cancelled booking spent.
+ *
+ * The database owns this now, because forma-admin cancels bookings too and the
+ * two apps had drifted into returning credits to different packs. It goes back
+ * to the pack the booking actually charged, revives that pack if it has since
+ * expired, and refuses to pay out twice for one booking.
+ *
+ * What it replaced picked the member's oldest unexpired pack and gave up
+ * silently if that pack happened to be full, which is why members were reporting
+ * cancellations that never credited them back.
  */
-export async function incrementPackCredit(
+export async function restorePackCredit(
   supabase: ReturnType<typeof createAdminClient>,
-  userId: string,
-  studioId: string
+  bookingId: string
 ): Promise<boolean> {
-  const { data: packs } = await supabase
-    .from("class_packs")
-    .select("id, credits_remaining, credits_total")
-    .eq("profile_id", userId)
-    .eq("studio_id", studioId)
-    .gt("expires_at", new Date().toISOString())
-    .order("purchased_at", { ascending: true })
-    .limit(1);
+  const { data, error } = await supabase.rpc("restore_pack_credit_for_booking", {
+    p_booking_id: bookingId,
+  });
 
-  if (!packs || packs.length === 0) return false;
+  if (error) {
+    console.error(`restore_pack_credit_for_booking failed for ${bookingId}:`, error.message);
+    return false;
+  }
 
-  const pack = packs[0];
-  if (pack.credits_remaining >= pack.credits_total) return false;
+  if (data !== "refunded" && data !== "already_refunded") {
+    console.warn(`Credit not returned for booking ${bookingId}: ${data}`);
+    return false;
+  }
 
-  const { error } = await supabase
-    .from("class_packs")
-    .update({ credits_remaining: pack.credits_remaining + 1 })
-    .eq("id", pack.id)
-    .eq("credits_remaining", pack.credits_remaining); // Optimistic lock
-
-  return !error;
+  return true;
 }

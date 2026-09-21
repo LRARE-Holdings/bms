@@ -1,13 +1,13 @@
 import type { Class } from "@/lib/types";
 import ClassIcon from "./class-icons";
 import { classTheme } from "@/lib/class-theme";
+import PriceTag from "@/components/pricing/price-tag";
+import { effectivePricePence, isDiscountActive } from "@/lib/pricing";
 
 export default function ClassCard({ cls }: { cls: Class }) {
   const { gradient, icon } = classTheme(cls.slug);
-  const priceDisplay =
-    cls.price_pence % 100 === 0
-      ? `£${cls.price_pence / 100}`
-      : `£${(cls.price_pence / 100).toFixed(2)}`;
+  const effective = effectivePricePence(cls);
+  const discountPercent = isDiscountActive(cls) ? cls.discount_percent : null;
 
   return (
     <a href="#timetable" className="group h-full">
@@ -17,9 +17,13 @@ export default function ClassCard({ cls }: { cls: Class }) {
           <div className={`${icon} transition-colors duration-300 scale-[2]`}>
             <ClassIcon slug={cls.slug} />
           </div>
-          <span className="absolute top-3 right-3 bg-cocoa text-wheat text-[0.7rem] font-semibold px-2.5 py-0.5 rounded-full z-10">
-            {priceDisplay}
-          </span>
+          <PriceTag
+            pricePence={cls.price_pence}
+            effectivePence={effective}
+            discountPercent={discountPercent}
+            variant="badge"
+            className="absolute top-3 right-3 z-10"
+          />
         </div>
 
         {/* Content */}

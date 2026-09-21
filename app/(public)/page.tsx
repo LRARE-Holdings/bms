@@ -10,6 +10,8 @@ import InstructorCard from "@/components/team/instructor-card";
 import TimetableView from "@/components/timetable/timetable-view";
 import HeroCanvas from "@/components/hero/hero-canvas";
 import type { Class, Instructor, PackTier, MembershipTier } from "@/lib/types";
+import PriceTag from "@/components/pricing/price-tag";
+import { effectivePricePence, isDiscountActive } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Burn Mat Studio | Pilates & Yoga in Stockton-on-Tees",
@@ -345,7 +347,11 @@ export default async function HomePage() {
                   {cls.duration_mins} min
                 </span>
                 <span className="font-semibold text-[0.88rem] text-cocoa text-right">
-                  &pound;{(cls.price_pence / 100).toFixed(2)}
+                  <PriceTag
+                    pricePence={cls.price_pence}
+                    effectivePence={effectivePricePence(cls)}
+                    discountPercent={isDiscountActive(cls) ? cls.discount_percent : null}
+                  />
                 </span>
               </div>
             ))}

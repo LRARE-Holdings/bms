@@ -2,6 +2,7 @@
 
 import type { TimetableSlot } from "@/lib/types";
 import { classTheme } from "@/lib/class-theme";
+import PriceTag from "@/components/pricing/price-tag";
 
 const BOOKING_CUTOFF_MINS = 30;
 
@@ -34,10 +35,6 @@ export default function SlotCard({
   const isFull = slot.spots_remaining <= 0;
   const isClosed = !isFull && !isPast && isBookingClosed(slot);
   const isLow = slot.spots_remaining > 0 && slot.spots_remaining <= 3;
-  const priceDisplay =
-    slot.price_pence % 100 === 0
-      ? `£${slot.price_pence / 100}`
-      : `£${(slot.price_pence / 100).toFixed(2)}`;
 
   // Format time from "HH:MM:SS" to "HH:MM"
   const time = slot.start_time.slice(0, 5);
@@ -91,9 +88,13 @@ export default function SlotCard({
       </span>
 
       {/* Price */}
-      <span className="text-[0.75rem] font-semibold text-cocoa min-w-[42px] text-right hidden md:block">
-        {priceDisplay}
-      </span>
+      <PriceTag
+        pricePence={slot.price_pence}
+        effectivePence={slot.effective_price_pence ?? slot.price_pence}
+        discountPercent={slot.discount_percent}
+        variant="stacked"
+        className="text-[0.75rem] min-w-[42px] hidden md:flex"
+      />
 
       {/* Book button */}
       {isBooked ? (

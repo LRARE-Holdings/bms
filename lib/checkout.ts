@@ -6,6 +6,7 @@ import {
   getOrCreateStripeCustomer,
 } from "@/lib/stripe";
 import { isBookingClosed, isClassSkipped, getBookingCount, getClassCapacity } from "@/lib/booking-helpers";
+import { PRICING_COLUMNS, effectivePricePence } from "@/lib/pricing";
 
 interface CheckoutResult {
   clientSecret: string;
@@ -36,7 +37,9 @@ export async function createDropinPaymentIntent(
   // Fetch schedule + class details
   const { data: slot, error: slotError } = await supabase
     .from("schedule")
-    .select("id, start_time, classes(id, name, price_pence, stripe_price_id, duration_mins)")
+    .select(
+      `id, start_time, classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
+    )
     .eq("id", scheduleId)
     .eq("studio_id", studioId)
     .single();
@@ -106,7 +109,7 @@ export async function createDropinPaymentIntent(
   // Create PaymentIntent
   const paymentIntent = await stripe.paymentIntents.create(
     {
-      amount: cls.price_pence,
+      amount: effectivePricePence(cls),
       currency: "gbp",
       customer: customerId,
       receipt_email: profile?.email || undefined,
@@ -131,7 +134,7 @@ export async function createDropinPaymentIntent(
     stripeAccountId,
     displayData: {
       name: cls.name,
-      pricePounds: (cls.price_pence / 100).toFixed(2),
+      pricePounds: (effectivePricePence(cls) / 100).toFixed(2),
       description: `${cls.duration_mins} min class`,
     },
   };
@@ -172,7 +175,9 @@ export async function createWaitlistClaimPaymentIntent(
   // Fetch schedule + class details
   const { data: slot, error: slotError } = await supabase
     .from("schedule")
-    .select("id, start_time, classes(id, name, price_pence, stripe_price_id, duration_mins)")
+    .select(
+      `id, start_time, classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
+    )
     .eq("id", scheduleId)
     .eq("studio_id", studioId)
     .single();
@@ -229,7 +234,7 @@ export async function createWaitlistClaimPaymentIntent(
   // Create PaymentIntent with waitlist claim token in metadata
   const paymentIntent = await stripe.paymentIntents.create(
     {
-      amount: cls.price_pence,
+      amount: effectivePricePence(cls),
       currency: "gbp",
       customer: customerId,
       receipt_email: profile?.email || undefined,
@@ -255,7 +260,7 @@ export async function createWaitlistClaimPaymentIntent(
     stripeAccountId,
     displayData: {
       name: cls.name,
-      pricePounds: (cls.price_pence / 100).toFixed(2),
+      pricePounds: (effectivePricePence(cls) / 100).toFixed(2),
       description: `${cls.duration_mins} min class (waitlist claim)`,
     },
   };

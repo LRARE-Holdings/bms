@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingCancellation } from "@/lib/email/send";
 import { notifyCancellation } from "@/lib/email/notify-cancellation";
 import { getStudioId } from "@/lib/studio-context";
-import { incrementPackCredit } from "@/lib/booking-helpers";
+import { restorePackCredit } from "@/lib/booking-helpers";
 
 const schema = z.object({
   booking_id: z.string().uuid(),
@@ -69,17 +69,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to cancel booking" }, { status: 500 });
     }
 
-    // Re-credit pack if applicable (admin client needed for class_packs UPDATE).
+    // Return the credit to the pack that paid for the booking.
     // Complimentary bookings are one-shot: free_class_used stays true, no refund.
+    //
+    // Safe to call even though a database trigger covers this too: the function
+    // will not pay out twice for the same booking.
     let creditRefunded = false;
     if (booking.payment_method === "pack_credit") {
-      creditRefunded = await incrementPackCredit(admin, user.id, studioId);
-      if (!creditRefunded) {
-        console.warn(
-          `Failed to re-credit pack for booking ${booking_id} (user ${user.id}). ` +
-          `Pack may be expired or at max credits.`
-        );
-      }
+      creditRefunded = await restorePackCredit(admin, booking_id);
     }
 
     await sendBookingCancellation({
