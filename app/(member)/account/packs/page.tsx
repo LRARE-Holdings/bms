@@ -7,7 +7,7 @@ import AccountHeader from "@/components/account/account-header";
 import BuyPackButton from "@/components/checkout/buy-pack-button";
 import type { Class, PackTier } from "@/lib/types";
 import PriceTag from "@/components/pricing/price-tag";
-import { effectivePricePence, isDiscountActive } from "@/lib/pricing";
+import { describeUpcomingDiscount } from "@/lib/pricing";
 
 export const metadata = {
   title: "Class Packs | Burn Mat Studio",
@@ -184,8 +184,8 @@ export default async function PacksPage() {
               <span className="font-semibold text-[0.84rem] text-cocoa">
                 <PriceTag
                   pricePence={cls.price_pence}
-                  effectivePence={effectivePricePence(cls)}
-                  discountPercent={isDiscountActive(cls) ? cls.discount_percent : null}
+                  effectivePence={cls.price_pence}
+                  note={describeUpcomingDiscount(cls)}
                 />
               </span>
             </div>

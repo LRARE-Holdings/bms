@@ -2,12 +2,13 @@ import type { Class } from "@/lib/types";
 import ClassIcon from "./class-icons";
 import { classTheme } from "@/lib/class-theme";
 import PriceTag from "@/components/pricing/price-tag";
-import { effectivePricePence, isDiscountActive } from "@/lib/pricing";
+import { describeUpcomingDiscount } from "@/lib/pricing";
 
 export default function ClassCard({ cls }: { cls: Class }) {
   const { gradient, icon } = classTheme(cls.slug);
-  const effective = effectivePricePence(cls);
-  const discountPercent = isDiscountActive(cls) ? cls.discount_percent : null;
+  // No date here: a card lists the class, not a session. Name the offer and let
+  // the timetable show the actual price per date.
+  const offer = describeUpcomingDiscount(cls);
 
   return (
     <a href="#timetable" className="group h-full">
@@ -19,8 +20,8 @@ export default function ClassCard({ cls }: { cls: Class }) {
           </div>
           <PriceTag
             pricePence={cls.price_pence}
-            effectivePence={effective}
-            discountPercent={discountPercent}
+            effectivePence={cls.price_pence}
+            note={offer}
             variant="badge"
             className="absolute top-3 right-3 z-10"
           />

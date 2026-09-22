@@ -11,7 +11,7 @@ import TimetableView from "@/components/timetable/timetable-view";
 import HeroCanvas from "@/components/hero/hero-canvas";
 import type { Class, Instructor, PackTier, MembershipTier } from "@/lib/types";
 import PriceTag from "@/components/pricing/price-tag";
-import { effectivePricePence, isDiscountActive } from "@/lib/pricing";
+import { describeUpcomingDiscount } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Burn Mat Studio | Pilates & Yoga in Stockton-on-Tees",
@@ -349,8 +349,8 @@ export default async function HomePage() {
                 <span className="font-semibold text-[0.88rem] text-cocoa text-right">
                   <PriceTag
                     pricePence={cls.price_pence}
-                    effectivePence={effectivePricePence(cls)}
-                    discountPercent={isDiscountActive(cls) ? cls.discount_percent : null}
+                    effectivePence={cls.price_pence}
+                    note={describeUpcomingDiscount(cls)}
                   />
                 </span>
               </div>

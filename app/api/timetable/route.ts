@@ -5,7 +5,7 @@ import { getStudioId } from "@/lib/studio-context";
 import {
   PRICING_COLUMNS,
   effectivePricePence,
-  isDiscountActive,
+  discountPercentOn,
 } from "@/lib/pricing";
 import type { DiscountableClass } from "@/lib/pricing";
 
@@ -146,8 +146,10 @@ export async function GET(request: NextRequest) {
         class_slug: cls.slug,
         duration_mins: cls.duration_mins,
         price_pence: cls.price_pence,
-        effective_price_pence: effectivePricePence(cls),
-        discount_percent: isDiscountActive(cls) ? cls.discount_percent : null,
+        // Priced by the slot's own date, so an October session shows October's
+        // price to someone booking it in September.
+        effective_price_pence: effectivePricePence(cls, dateStr),
+        discount_percent: discountPercentOn(cls, dateStr),
         max_capacity: maxCapacity,
         instructor_name: instructor.name,
         booking_count: bookingCount,

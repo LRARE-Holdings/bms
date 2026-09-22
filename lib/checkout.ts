@@ -109,7 +109,7 @@ export async function createDropinPaymentIntent(
   // Create PaymentIntent
   const paymentIntent = await stripe.paymentIntents.create(
     {
-      amount: effectivePricePence(cls),
+      amount: effectivePricePence(cls, date),
       currency: "gbp",
       customer: customerId,
       receipt_email: profile?.email || undefined,
@@ -134,7 +134,7 @@ export async function createDropinPaymentIntent(
     stripeAccountId,
     displayData: {
       name: cls.name,
-      pricePounds: (effectivePricePence(cls) / 100).toFixed(2),
+      pricePounds: (effectivePricePence(cls, date) / 100).toFixed(2),
       description: `${cls.duration_mins} min class`,
     },
   };
@@ -234,7 +234,7 @@ export async function createWaitlistClaimPaymentIntent(
   // Create PaymentIntent with waitlist claim token in metadata
   const paymentIntent = await stripe.paymentIntents.create(
     {
-      amount: effectivePricePence(cls),
+      amount: effectivePricePence(cls, date),
       currency: "gbp",
       customer: customerId,
       receipt_email: profile?.email || undefined,
@@ -260,7 +260,7 @@ export async function createWaitlistClaimPaymentIntent(
     stripeAccountId,
     displayData: {
       name: cls.name,
-      pricePounds: (effectivePricePence(cls) / 100).toFixed(2),
+      pricePounds: (effectivePricePence(cls, date) / 100).toFixed(2),
       description: `${cls.duration_mins} min class (waitlist claim)`,
     },
   };

@@ -76,7 +76,7 @@ export default async function WaitlistClaimPage({
   const startTime = sched?.start_time?.slice(0, 5) || "";
   const durationMins = cls?.duration_mins || 0;
   // Charge today's price, matching what checkout will actually take.
-  const pricePence = cls ? effectivePricePence(cls) : 0;
+  const pricePence = cls ? effectivePricePence(cls, entry.date as string) : 0;
   const instructorName = inst?.name || "Instructor";
 
   const dateObj = new Date(entry.date + "T00:00:00");
