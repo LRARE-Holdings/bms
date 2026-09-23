@@ -284,27 +284,20 @@ export default function BookingModal({
     setLoading(true);
     setError("");
     try {
-      // Get current max position
-      const { data: maxPos } = await supabase
+      // The database assigns the place in the queue (a member can only see
+      // their own entries, so it can't be worked out here). Reading it back
+      // gives the real position to show.
+      const { data: joined, error: insertError } = await supabase
         .from("waitlist")
+        .insert({
+          studio_id: studioId,
+          schedule_id: slot.schedule_id,
+          date: slot.date,
+          profile_id: user!.id,
+          status: "waiting",
+        })
         .select("position")
-        .eq("studio_id", studioId)
-        .eq("schedule_id", slot.schedule_id)
-        .eq("date", slot.date)
-        .order("position", { ascending: false })
-        .limit(1)
         .single();
-
-      const position = (maxPos?.position ?? 0) + 1;
-
-      const { error: insertError } = await supabase.from("waitlist").insert({
-        studio_id: studioId,
-        schedule_id: slot.schedule_id,
-        date: slot.date,
-        profile_id: user!.id,
-        position,
-        status: "waiting",
-      });
 
       if (insertError) {
         if (insertError.code === "23505") {
@@ -316,7 +309,7 @@ export default function BookingModal({
         return;
       }
 
-      setWaitlistSuccess(position);
+      setWaitlistSuccess(joined?.position ?? 1);
       setLoading(false);
     } catch {
       setError("Something went wrong. Please try again.");
