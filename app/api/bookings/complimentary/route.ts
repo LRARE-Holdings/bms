@@ -9,7 +9,8 @@ import {
   isClassSkipped,
   getBookingCount,
   getClassCapacity,
-  validateBookingDay,
+  slotIsBookableOn,
+  BOOKABLE_SLOT_COLUMNS,
   isBeyondBookingHorizon,
 } from "@/lib/booking-helpers";
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Fetch schedule slot with class info
     const { data: scheduleSlot } = await supabase
       .from("schedule")
-      .select("start_time, class_id, day_of_week")
+      .select(BOOKABLE_SLOT_COLUMNS)
       .eq("id", schedule_id)
       .eq("studio_id", studioId)
       .single();
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!validateBookingDay(scheduleSlot.day_of_week, date)) {
+    if (!slotIsBookableOn(scheduleSlot, date)) {
       return NextResponse.json(
         { error: "Booking date does not match the scheduled day for this class" },
         { status: 400 }
@@ -114,7 +115,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (await isClassSkipped(admin, studioId, schedule_id, date)) {
+    if (
+      await isClassSkipped(
+        admin,
+        studioId,
+        schedule_id,
+        date,
+        scheduleSlot.start_time
+      )
+    ) {
       return NextResponse.json(
         { error: "This class has been cancelled" },
         { status: 400 }

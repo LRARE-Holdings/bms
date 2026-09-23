@@ -8,6 +8,13 @@ import {
   discountPercentOn,
 } from "@/lib/pricing";
 import type { DiscountableClass } from "@/lib/pricing";
+import {
+  SCHEDULE_RULE_COLUMNS,
+  normaliseRule,
+  slotRunsOn,
+  isSlotInHoliday,
+  type HolidayWindow,
+} from "@/lib/schedule-rules";
 
 const DEFAULT_MAX_CAPACITY = 10;
 
@@ -41,9 +48,10 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   // Fetch schedule with class and instructor data (including max_capacity).
-  // Pull the parent rule's date window so we can drop occurrences that fall
-  // outside its starts_on/ends_on. Rows with rule_id=NULL are treated as
-  // always valid (legacy/manual entries).
+  // Pull the parent rule in full — recurrence and is_active as well as the date
+  // window. Selecting only the window made a fortnightly class render every
+  // week and left a paused rule bookable here after it had gone from the
+  // dashboard. Rows with rule_id=NULL are standing weekly entries.
   const { data: scheduleSlots, error } = await supabase
     .from("schedule")
     .select(`
@@ -54,7 +62,7 @@ export async function GET(request: NextRequest) {
       rule_id,
       classes!inner(name, slug, duration_mins, capacity, ${PRICING_COLUMNS}),
       instructors!inner(name),
-      schedule_rules(starts_on, ends_on)
+      schedule_rules(${SCHEDULE_RULE_COLUMNS})
     `)
     .eq("studio_id", studioId)
     .eq("is_active", true)
@@ -88,7 +96,7 @@ export async function GET(request: NextRequest) {
         .lte("date", weekEndStr),
       adminClient
         .from("studio_holidays")
-        .select("start_date, end_date")
+        .select("start_date, end_date, start_time, end_time")
         .eq("studio_id", studioId)
         .lte("start_date", weekEndStr)
         .gte("end_date", weekStartStr),
@@ -99,12 +107,7 @@ export async function GET(request: NextRequest) {
     (exceptions ?? []).map((e) => `${e.schedule_id}_${e.date}`)
   );
 
-  // Check if a date falls within any studio holiday
-  function isHolidayDate(dateStr: string): boolean {
-    return (holidays ?? []).some(
-      (h) => dateStr >= h.start_date && dateStr <= h.end_date
-    );
-  }
+  const holidayWindows = (holidays ?? []) as HolidayWindow[];
 
   // Count bookings per schedule_id + date
   const bookingCounts: Record<string, number> = {};
@@ -120,12 +123,7 @@ export async function GET(request: NextRequest) {
     .map((slot: Record<string, unknown>) => {
       const cls = slot.classes as Record<string, unknown> & DiscountableClass;
       const instructor = slot.instructors as Record<string, unknown>;
-      const ruleRel = slot.schedule_rules as
-        | { starts_on: string; ends_on: string | null }
-        | { starts_on: string; ends_on: string | null }[]
-        | null
-        | undefined;
-      const rule = Array.isArray(ruleRel) ? ruleRel[0] ?? null : ruleRel ?? null;
+      const rule = normaliseRule(slot.schedule_rules);
 
       const slotDate = new Date(weekStart);
       slotDate.setDate(slotDate.getDate() + (slot.day_of_week as number));
@@ -154,23 +152,31 @@ export async function GET(request: NextRequest) {
         instructor_name: instructor.name,
         booking_count: bookingCount,
         spots_remaining: maxCapacity - bookingCount,
-        rule_window: rule,
+        rule,
       };
     })
     .filter((slot) => {
       const key = `${slot.schedule_id}_${slot.date}`;
-      if (skippedSet.has(key) || isHolidayDate(slot.date)) return false;
-      const window = slot.rule_window;
-      if (window) {
-        if (slot.date < window.starts_on) return false;
-        if (window.ends_on && slot.date > window.ends_on) return false;
+      if (skippedSet.has(key)) return false;
+      if (
+        isSlotInHoliday(
+          holidayWindows,
+          slot.date,
+          slot.start_time as string
+        )
+      ) {
+        return false;
       }
-      return true;
+      // Recurrence, rule window and is_active, in one place.
+      return slotRunsOn(
+        { day_of_week: slot.day_of_week as number, rule: slot.rule },
+        slot.date
+      );
     });
 
   return NextResponse.json({
     week_start: weekStartStr,
     week_end: weekEndStr,
-    slots: slots.map(({ rule_window, ...rest }) => rest),
+    slots: slots.map(({ rule, ...rest }) => rest),
   });
 }

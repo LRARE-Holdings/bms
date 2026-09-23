@@ -5,7 +5,14 @@ import {
   getStudioStripeAccount,
   getOrCreateStripeCustomer,
 } from "@/lib/stripe";
-import { isBookingClosed, isClassSkipped, getBookingCount, getClassCapacity } from "@/lib/booking-helpers";
+import {
+  isBookingClosed,
+  isClassSkipped,
+  getBookingCount,
+  getClassCapacity,
+  slotIsBookableOn,
+} from "@/lib/booking-helpers";
+import { SCHEDULE_RULE_COLUMNS } from "@/lib/schedule-rules";
 import { PRICING_COLUMNS, effectivePricePence } from "@/lib/pricing";
 
 interface CheckoutResult {
@@ -38,7 +45,7 @@ export async function createDropinPaymentIntent(
   const { data: slot, error: slotError } = await supabase
     .from("schedule")
     .select(
-      `id, start_time, classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
+      `id, start_time, day_of_week, schedule_rules(${SCHEDULE_RULE_COLUMNS}), classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
     )
     .eq("id", scheduleId)
     .eq("studio_id", studioId)
@@ -57,8 +64,14 @@ export async function createDropinPaymentIntent(
     throw new Error("Bookings close 30 minutes before class starts");
   }
 
+  // Reject a date the class does not actually run on — recurrence and rule
+  // window, not just the weekday.
+  if (!slotIsBookableOn(slot, date)) {
+    throw new Error("This class does not run on that date");
+  }
+
   // Reject if class is skipped or studio is on holiday
-  if (await isClassSkipped(supabase, studioId, scheduleId, date)) {
+  if (await isClassSkipped(supabase, studioId, scheduleId, date, slot.start_time)) {
     throw new Error("This class has been cancelled");
   }
 
@@ -176,7 +189,7 @@ export async function createWaitlistClaimPaymentIntent(
   const { data: slot, error: slotError } = await supabase
     .from("schedule")
     .select(
-      `id, start_time, classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
+      `id, start_time, day_of_week, schedule_rules(${SCHEDULE_RULE_COLUMNS}), classes(id, name, stripe_price_id, duration_mins, ${PRICING_COLUMNS})`
     )
     .eq("id", scheduleId)
     .eq("studio_id", studioId)
@@ -190,8 +203,12 @@ export async function createWaitlistClaimPaymentIntent(
   const cls = Array.isArray(slot.classes) ? slot.classes[0] : (slot.classes as any);
   if (!cls) throw new Error("Class not found for this schedule slot");
 
+  if (!slotIsBookableOn(slot, date)) {
+    throw new Error("This class does not run on that date");
+  }
+
   // Reject if class is skipped or studio is on holiday
-  if (await isClassSkipped(supabase, studioId, scheduleId, date)) {
+  if (await isClassSkipped(supabase, studioId, scheduleId, date, slot.start_time)) {
     throw new Error("This class has been cancelled");
   }
 

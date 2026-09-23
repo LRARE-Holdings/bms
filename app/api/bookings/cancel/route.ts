@@ -6,6 +6,7 @@ import { sendBookingCancellation } from "@/lib/email/send";
 import { notifyCancellation } from "@/lib/email/notify-cancellation";
 import { getStudioId } from "@/lib/studio-context";
 import { restorePackCredit } from "@/lib/booking-helpers";
+import { promoteWaitlist } from "@/lib/waitlist-promote";
 
 const schema = z.object({
   booking_id: z.string().uuid(),
@@ -95,6 +96,14 @@ export async function POST(request: NextRequest) {
       date: booking.date,
       paymentMethod: booking.payment_method,
       cancelledBy: "member",
+    });
+
+    // Offer the freed spot to the next person waiting. Awaited so the call
+    // survives serverless teardown; it never throws.
+    await promoteWaitlist({
+      studioId,
+      scheduleId: booking.schedule_id,
+      date: booking.date,
     });
 
     return NextResponse.json({ success: true, creditRefunded });

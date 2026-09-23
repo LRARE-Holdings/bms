@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "migrate:users": "tsx scripts/migrate-users.ts"
+    "migrate:users": "tsx scripts/migrate-users.ts",
+    "verify:schedule": "tsx scripts/verify-schedule-rules.ts"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^5.6.1",
