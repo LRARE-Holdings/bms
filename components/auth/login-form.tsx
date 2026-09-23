@@ -1,17 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm({ studioId, next = "/account" }: { studioId: string; next?: string }) {
+export default function LoginForm({ next = "/account" }: { studioId?: string; next?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -33,36 +31,20 @@ export default function LoginForm({ studioId, next = "/account" }: { studioId: s
 
     // Ensure studio membership exists — catches users who signed up
     // before membership creation was reliable, or who were created
-    // via Supabase dashboard without a membership row.
-    await fetch("/api/auth/ensure-membership", { method: "POST" });
+    // via Supabase dashboard without a membership row. It also returns
+    // their role, so there's no second lookup before redirecting.
+    const res = await fetch("/api/auth/ensure-membership", { method: "POST" });
+    const { role } = (await res.json().catch(() => ({}))) as { role?: string };
 
-    // Check role for redirect
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: membership } = await supabase
-        .from("studio_memberships")
-        .select("role")
-        .eq("profile_id", user.id)
-        .eq("studio_id", studioId)
-        .single();
-
-      const role = membership?.role;
-      if (role === "admin" || role === "staff") {
-        const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
-        if (adminUrl) {
-          window.location.href = adminUrl;
-          return;
-        }
-      }
-      router.push(next);
-    } else {
-      router.push(next);
+    const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
+    if ((role === "admin" || role === "staff") && adminUrl) {
+      window.location.href = adminUrl;
+      return;
     }
 
-    router.refresh();
+    // A full navigation carries the new session cookies in one request;
+    // router.push + router.refresh rendered the page twice.
+    window.location.assign(next);
   }
 
   return (
