@@ -36,6 +36,12 @@ export default async function CheckoutSuccessPage({
       href: "/account/packs",
       label: "View packs",
     },
+    event_ticket: {
+      title: "Tickets confirmed",
+      message: "You're in. We've emailed your confirmation.",
+      href: "/account/events",
+      label: "View my tickets",
+    },
     membership: {
       title: "Membership active",
       message: "Your membership is now active. You can book classes at no extra cost.",

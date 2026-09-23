@@ -31,8 +31,10 @@ export default function TermsPage() {
       <p>
         You may cancel a booking at any time before the class starts. If you
         booked using a class pack credit, the credit will be returned to your
-        pack. Stripe drop-in payments are non-refundable unless the class is
-        cancelled by the studio.
+        pack. If you paid by card, you will receive a full refund to that card.
+        The same applies to event tickets: cancel any time before the event
+        starts for a full refund. If the studio cancels a class or event, you
+        will always be refunded in full.
       </p>
 
       <h2>Class Packs</h2>

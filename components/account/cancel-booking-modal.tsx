@@ -40,8 +40,8 @@ function getRefundInfo(paymentMethod: string): {
     case "stripe":
     default:
       return {
-        willRefund: false,
-        message: "Drop-in payments are not automatically refunded. Contact the studio if you need a refund.",
+        willRefund: true,
+        message: "You'll get a full refund to the card you paid with. It usually takes 5–10 working days to appear.",
       };
   }
 }

@@ -7,11 +7,16 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudioId } from "@/lib/auth";
 import ClassCard from "@/components/classes/class-card";
 import InstructorCard from "@/components/team/instructor-card";
+import EventCard from "@/components/events/event-card";
 import TimetableView from "@/components/timetable/timetable-view";
 import HeroCanvas from "@/components/hero/hero-canvas";
-import type { Class, Instructor, PackTier, MembershipTier } from "@/lib/types";
+import type { Class, Instructor, PackTier, MembershipTier, StudioEvent } from "@/lib/types";
 import PriceTag from "@/components/pricing/price-tag";
 import { describeUpcomingDiscount } from "@/lib/pricing";
+import { ukDateStr } from "@/lib/date-utils";
+import { getEventAvailability, getEventMemberState } from "@/lib/event-tickets";
+
+const EVENTS_SHOWN = 6;
 
 export const metadata: Metadata = {
   title: "Burn Mat Studio | Pilates & Yoga in Stockton-on-Tees",
@@ -45,6 +50,7 @@ export default async function HomePage() {
     { data: membershipTiers },
     { data: scheduleData },
     { data: studioSettings },
+    { data: upcomingEvents },
   ] = await Promise.all([
     supabase
       .from("classes")
@@ -78,9 +84,33 @@ export default async function HomePage() {
       .select("first_class_free_enabled")
       .eq("id", studioId)
       .single(),
+    // An event stays up for the whole of its day. RLS only exposes published
+    // events; the filter is repeated so a signed-in admin sees what visitors see.
+    supabase
+      .from("events")
+      .select("*")
+      .eq("studio_id", studioId)
+      .eq("is_published", true)
+      .is("cancelled_at", null)
+      .gte("event_date", ukDateStr())
+      .order("event_date")
+      .order("start_time", { nullsFirst: true })
+      .limit(EVENTS_SHOWN),
   ]);
 
   const firstClassFreeEnabled = studioSettings?.first_class_free_enabled ?? false;
+
+  // Ticket state for the events section: live places left, and what the
+  // signed-in member already has (tickets, waitlist place, sale alert).
+  const events = (upcomingEvents as StudioEvent[] | null) ?? [];
+  const ticketedIds = events.filter((e) => e.tickets_enabled).map((e) => e.id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [eventAvailability, eventMemberState] = await Promise.all([
+    getEventAvailability(ticketedIds),
+    user ? getEventMemberState(user.id, ticketedIds) : Promise.resolve({} as Awaited<ReturnType<typeof getEventMemberState>>),
+  ]);
 
   // Derive class tags per instructor from actual schedule data
   const classTagsMap: Record<string, string[]> = {};
@@ -245,6 +275,37 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ═══ EVENTS — only while something is coming up ═══ */}
+      {events.length > 0 && (
+        <section id="events" className="py-20 px-5 md:px-8 max-w-[1100px] mx-auto">
+          <p className="text-[0.66rem] font-semibold tracking-[0.2em] uppercase text-gold mb-2">
+            Coming up
+          </p>
+          <h2 className="font-display text-[clamp(2rem,4vw,3.2rem)] font-normal text-cocoa leading-tight mb-3">
+            Events at the studio
+          </h2>
+          <p className="text-[0.92rem] text-warm-grey leading-relaxed max-w-lg mb-10">
+            Workshops, socials and special sessions happening at Burn.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {events.map((event, i) => (
+              <div
+                key={event.id}
+                className="opacity-0 animate-fade-up"
+                style={{ animationDelay: `${i * 0.1}s`, animationDuration: "0.5s" }}
+              >
+                <EventCard
+                  event={event}
+                  availability={eventAvailability[event.id]}
+                  profileId={user?.id ?? null}
+                  member={eventMemberState[event.id] ?? null}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ═══ CLASSES ═══ */}
       <section id="classes" className="py-20 px-5 md:px-8 max-w-[1100px] mx-auto">

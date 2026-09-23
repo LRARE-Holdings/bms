@@ -18,6 +18,11 @@ interface CheckoutModalProps {
   tierId?: string;
   /** For waitlist_claim */
   waitlistToken?: string;
+  /** For event_ticket */
+  eventId?: string;
+  quantity?: number;
+  /** For event_ticket, when claiming a waitlist offer */
+  eventClaimToken?: string;
   /** User profile id for polling */
   profileId: string;
 }
@@ -32,6 +37,8 @@ export default function CheckoutModal(props: CheckoutModalProps) {
   } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // Event tickets are confirmed by id: the hold created for this checkout.
+  const [ticketId, setTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -44,7 +51,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
           ? "/api/checkout/create-subscription"
           : "/api/checkout/create-payment-intent";
 
-        let body: Record<string, string>;
+        let body: Record<string, string | number>;
         if (props.type === "dropin") {
           body = { type: "dropin", schedule_id: props.scheduleId!, date: props.date! };
         } else if (props.type === "pack") {
@@ -58,6 +65,13 @@ export default function CheckoutModal(props: CheckoutModalProps) {
           };
         } else if (props.type === "membership") {
           body = { tier_id: props.tierId! };
+        } else if (props.type === "event_ticket") {
+          body = {
+            type: "event_ticket",
+            event_id: props.eventId!,
+            quantity: props.quantity ?? 1,
+            ...(props.eventClaimToken ? { claim_token: props.eventClaimToken } : {}),
+          };
         } else {
           throw new Error("Invalid checkout type");
         }
@@ -77,6 +91,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
         setClientSecret(data.clientSecret);
         setStripeAccountId(data.stripeAccountId ?? null);
         setDisplayData(data.displayData);
+        setTicketId(data.ticketId ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialise payment");
       } finally {
@@ -85,7 +100,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
     }
 
     init();
-  }, [props.type, props.scheduleId, props.date, props.tierId, props.waitlistToken]);
+  }, [props.type, props.scheduleId, props.date, props.tierId, props.waitlistToken, props.eventId, props.quantity, props.eventClaimToken]);
 
   return (
     <div
@@ -158,6 +173,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
                 scheduleId={props.scheduleId}
                 date={props.date}
                 tierId={props.tierId}
+                ticketId={ticketId}
                 onClose={props.onClose}
                 onSuccess={props.onSuccess}
               />
@@ -177,6 +193,7 @@ function CheckoutModalForm({
   scheduleId,
   date,
   tierId,
+  ticketId,
   onClose,
   onSuccess,
 }: {
@@ -186,6 +203,7 @@ function CheckoutModalForm({
   scheduleId?: string;
   date?: string;
   tierId?: string;
+  ticketId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -239,6 +257,14 @@ function CheckoutModalForm({
           .eq("status", "active")
           .maybeSingle();
         found = !!data;
+      } else if (type === "event_ticket" && ticketId) {
+        const { data } = await supabase
+          .from("event_tickets")
+          .select("id")
+          .eq("id", ticketId)
+          .eq("status", "confirmed")
+          .maybeSingle();
+        found = !!data;
       }
 
       if (found) {
@@ -256,7 +282,7 @@ function CheckoutModalForm({
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [polling, pollingStartedAt, type, scheduleId, date, tierId, profileId, supabase]);
+  }, [polling, pollingStartedAt, type, scheduleId, date, tierId, ticketId, profileId, supabase]);
 
   // Trigger onSuccess after confirmation
   useEffect(() => {
@@ -266,7 +292,9 @@ function CheckoutModalForm({
           ? "Booking confirmed"
           : type === "pack"
             ? "Class pack purchased"
-            : "Membership activated";
+            : type === "event_ticket"
+              ? "Tickets confirmed"
+              : "Membership activated";
       toast(label);
       const timer = setTimeout(() => onSuccess(), 1200);
       return () => clearTimeout(timer);
@@ -314,7 +342,9 @@ function CheckoutModalForm({
             ? "Your class is booked."
             : type === "pack"
               ? "Your class pack is ready to use."
-              : "Your membership is now active."}
+              : type === "event_ticket"
+                ? "You're in. Your confirmation is on its way by email."
+                : "Your membership is now active."}
         </p>
       </div>
     );
