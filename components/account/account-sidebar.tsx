@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,6 +34,18 @@ const navItems = [
         <line x1="16" y1="13" x2="8" y2="13" />
         <line x1="16" y1="17" x2="8" y2="17" />
         <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+  },
+  {
+    href: "/account/check-in",
+    label: "Check-in code",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
       </svg>
     ),
   },
@@ -87,8 +100,19 @@ const navItems = [
   },
 ];
 
+// On a phone the bottom bar holds what people need on the go — at the door
+// especially — and the rest sits under "More", so nothing gets squeezed.
+const MOBILE_PRIMARY = ["/account", "/account/bookings", "/account/check-in", "/account/events"];
+
+function mobileLabel(label: string) {
+  if (label === "Book a class") return "Book";
+  if (label === "Check-in code") return "Check in";
+  return label.split(" ").pop();
+}
+
 export default function AccountSidebar({ profileName, profileEmail }: AccountSidebarProps) {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -177,34 +201,74 @@ export default function AccountSidebar({ profileName, profileEmail }: AccountSid
       </aside>
 
       {/* ═══ MOBILE BOTTOM NAV ═══ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-sand flex items-center justify-around px-2 py-2 safe-area-pb">
-        {navItems.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg min-w-[56px] transition-colors ${
-                active ? "text-gold" : "text-warm-grey"
-              }`}
+      {moreOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-charcoal/30" onClick={() => setMoreOpen(false)}>
+          <div
+            className="absolute bottom-[64px] right-3 left-3 bg-white rounded-2xl border border-sand shadow-lg p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {navItems
+              .filter((item) => !MOBILE_PRIMARY.includes(item.href))
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[0.88rem] ${
+                    isActive(item.href) ? "text-gold bg-cream" : "text-cocoa hover:bg-cream"
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 px-3 py-3 rounded-xl text-[0.88rem] text-cocoa hover:bg-cream hover:text-ember"
             >
-              <span>{item.icon}</span>
-              <span className="text-[0.58rem] font-medium tracking-[0.02em]">
-                {item.label === "Book a class" ? "Book" : item.label.split(" ").pop()}
-              </span>
-            </Link>
-          );
-        })}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Log out
+            </button>
+          </div>
+        </div>
+      )}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-sand flex items-center justify-around px-2 py-2 safe-area-pb">
+        {navItems
+          .filter((item) => MOBILE_PRIMARY.includes(item.href))
+          .map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg min-w-[56px] transition-colors ${
+                  active ? "text-gold" : "text-warm-grey"
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span className="text-[0.58rem] font-medium tracking-[0.02em]">{mobileLabel(item.label)}</span>
+              </Link>
+            );
+          })}
         <button
-          onClick={handleLogout}
-          className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg min-w-[56px] text-warm-grey hover:text-ember transition-colors"
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-expanded={moreOpen}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg min-w-[56px] transition-colors ${
+            moreOpen || navItems.some((i) => !MOBILE_PRIMARY.includes(i.href) && isActive(i.href))
+              ? "text-gold"
+              : "text-warm-grey"
+          }`}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <circle cx="5" cy="12" r="1.2" />
+            <circle cx="12" cy="12" r="1.2" />
+            <circle cx="19" cy="12" r="1.2" />
           </svg>
-          <span className="text-[0.58rem] font-medium tracking-[0.02em]">Logout</span>
+          <span className="text-[0.58rem] font-medium tracking-[0.02em]">More</span>
         </button>
       </nav>
     </>
