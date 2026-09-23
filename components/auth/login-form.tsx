@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm({ studioId }: { studioId: string }) {
+export default function LoginForm({ studioId, next = "/account" }: { studioId: string; next?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -57,9 +57,9 @@ export default function LoginForm({ studioId }: { studioId: string }) {
           return;
         }
       }
-      router.push("/account");
+      router.push(next);
     } else {
-      router.push("/account");
+      router.push(next);
     }
 
     router.refresh();
@@ -170,7 +170,7 @@ export default function LoginForm({ studioId }: { studioId: string }) {
       <p className="text-center text-[0.82rem] text-warm-grey">
         New to Burn Mat Studio?{" "}
         <Link
-          href="/signup"
+          href={`/signup${next === "/account" ? "" : `?next=${encodeURIComponent(next)}`}`}
           className="font-semibold text-gold hover:text-cocoa transition-colors"
         >
           Create an account

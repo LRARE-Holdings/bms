@@ -1,13 +1,20 @@
 import LoginForm from "@/components/auth/login-form";
 import Image from "next/image";
 import { getStudioId } from "@/lib/studio-context";
+import { safeNextPath } from "@/lib/site-url";
 
 export const metadata = {
   title: "Log In | Burn Mat Studio",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const studioId = await getStudioId();
+  // Where to return after logging in — e.g. the event page a shared link led to.
+  const next = safeNextPath((await searchParams).next);
   return (
     <section className="min-h-screen flex">
       {/* Left brand panel — hidden on mobile */}
@@ -56,7 +63,7 @@ export default async function LoginPage() {
             Sign in to your account to manage bookings and packs.
           </p>
 
-          <LoginForm studioId={studioId} />
+          <LoginForm studioId={studioId} next={next} />
         </div>
       </div>
     </section>

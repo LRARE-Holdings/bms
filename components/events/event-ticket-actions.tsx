@@ -17,6 +17,8 @@ interface Props {
   /** Null when signed out */
   profileId: string | null;
   member: EventMemberState | null;
+  /** Where to come back to after logging in or signing up */
+  returnPath: string;
 }
 
 const primary =
@@ -41,7 +43,8 @@ function formatSaleTime(iso: string) {
 }
 
 export default function EventTicketActions(props: Props) {
-  const { eventId, pricePence, maxPerMember, salesOpenAt, availability, profileId, member } = props;
+  const { eventId, pricePence, maxPerMember, salesOpenAt, availability, profileId, member, returnPath } = props;
+  const next = `?next=${encodeURIComponent(returnPath)}`;
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -116,10 +119,10 @@ export default function EventTicketActions(props: Props) {
           <p className="text-[0.75rem] text-warm-grey">Tickets on sale {formatSaleTime(salesOpenAt)}</p>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/login" className={primary}>
+          <Link href={`/login${next}`} className={primary}>
             {label}
           </Link>
-          <Link href="/signup" className={quiet}>
+          <Link href={`/signup${next}`} className={quiet}>
             New here? Create an account
           </Link>
         </div>

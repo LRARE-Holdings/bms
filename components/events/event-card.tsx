@@ -1,23 +1,8 @@
 import Image from "next/image";
 import type { EventAvailability, EventMemberState, StudioEvent } from "@/lib/types";
+import Link from "next/link";
 import EventTicketActions from "@/components/events/event-ticket-actions";
-
-function eventDateParts(eventDate: string) {
-  // Parsed as a local date on purpose: it is a UK calendar date, not an instant.
-  const d = new Date(`${eventDate}T00:00:00`);
-  return {
-    weekday: d.toLocaleDateString("en-GB", { weekday: "short" }),
-    day: d.getDate(),
-    month: d.toLocaleDateString("en-GB", { month: "short" }),
-    long: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
-  };
-}
-
-function formatTimes(event: StudioEvent): string | null {
-  if (!event.start_time) return null;
-  const start = event.start_time.slice(0, 5);
-  return event.end_time ? `${start} – ${event.end_time.slice(0, 5)}` : start;
-}
+import { eventDateParts, formatEventTimes } from "@/lib/event-format";
 
 export default function EventCard({
   event,
@@ -32,11 +17,12 @@ export default function EventCard({
   member: EventMemberState | null;
 }) {
   const date = eventDateParts(event.event_date);
-  const times = formatTimes(event);
+  const times = formatEventTimes(event);
+  const href = `/events/${event.slug}`;
 
   return (
     <article className="h-full flex flex-col bg-white border border-sand rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_12px_40px_rgba(71,55,40,0.08)] hover:border-gold">
-      <div className="relative aspect-[370/208] bg-sand overflow-hidden">
+      <Link href={href} className="relative block aspect-[370/208] bg-sand overflow-hidden" aria-label={event.title}>
         {event.image_url ? (
           <Image
             src={event.image_url}
@@ -61,7 +47,7 @@ export default function EventCard({
             {date.month}
           </span>
         </div>
-      </div>
+      </Link>
 
       <div className="p-5 flex flex-col flex-1">
         <p className="text-[0.66rem] font-semibold tracking-[0.1em] uppercase text-gold mb-1.5">
@@ -69,16 +55,24 @@ export default function EventCard({
           {times && <> &middot; {times}</>}
         </p>
         <h3 className="font-display text-[1.5rem] font-semibold text-cocoa leading-tight mb-1">
-          {event.title}
+          <Link href={href} className="hover:text-gold transition-colors">
+            {event.title}
+          </Link>
         </h3>
         {event.location && (
           <p className="text-[0.75rem] text-warm-grey mb-2">{event.location}</p>
         )}
         {event.description && (
-          <p className="text-[0.85rem] text-warm-grey leading-relaxed whitespace-pre-line mt-1">
+          <p className="text-[0.85rem] text-warm-grey leading-relaxed whitespace-pre-line mt-1 line-clamp-3">
             {event.description}
           </p>
         )}
+        <Link
+          href={href}
+          className="self-start mt-2 text-[0.72rem] font-semibold text-gold hover:text-cocoa underline underline-offset-2"
+        >
+          More details
+        </Link>
         {event.tickets_enabled && availability && (
           <div className="mt-auto pt-5">
             <EventTicketActions
@@ -89,6 +83,7 @@ export default function EventCard({
               availability={availability}
               profileId={profileId}
               member={member}
+              returnPath={href}
             />
           </div>
         )}
