@@ -7,6 +7,7 @@ import {
   createWaitlistClaimPaymentIntent,
 } from "@/lib/checkout";
 import { getStudioId } from "@/lib/studio-context";
+import { createEventTicketPaymentIntent } from "@/lib/event-tickets";
 
 const dropinSchema = z.object({
   type: z.literal("dropin"),
@@ -26,7 +27,20 @@ const waitlistClaimSchema = z.object({
   waitlist_token: z.string(),
 });
 
-const schema = z.discriminatedUnion("type", [dropinSchema, packSchema, waitlistClaimSchema]);
+const eventTicketSchema = z.object({
+  type: z.literal("event_ticket"),
+  event_id: z.string().uuid(),
+  quantity: z.number().int().min(1).max(20),
+  // Present when claiming a waitlist offer; the quantity then comes from the offer.
+  claim_token: z.string().uuid().optional(),
+});
+
+const schema = z.discriminatedUnion("type", [
+  dropinSchema,
+  packSchema,
+  waitlistClaimSchema,
+  eventTicketSchema,
+]);
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -82,6 +96,18 @@ export async function POST(request: NextRequest) {
         studioId,
         waitlist_token
       );
+
+      return NextResponse.json(result);
+    }
+
+    if (parsed.data.type === "event_ticket") {
+      const result = await createEventTicketPaymentIntent({
+        userId: user.id,
+        studioId,
+        eventId: parsed.data.event_id,
+        quantity: parsed.data.quantity,
+        claimToken: parsed.data.claim_token,
+      });
 
       return NextResponse.json(result);
     }

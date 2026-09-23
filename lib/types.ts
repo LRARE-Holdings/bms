@@ -56,6 +56,46 @@ export interface Class {
   created_at: string;
 }
 
+export interface StudioEvent {
+  id: string;
+  studio_id: string;
+  title: string;
+  description: string;
+  /** UK wall-clock date, YYYY-MM-DD */
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  link_label: string | null;
+  is_published: boolean;
+  tickets_enabled: boolean;
+  price_pence: number;
+  capacity: number | null;
+  max_tickets_per_member: number;
+  /** Null means on sale as soon as the event is published */
+  sales_open_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** What the signed-in member already has for one event. */
+export interface EventMemberState {
+  /** Places they hold on confirmed tickets */
+  ticketsHeld: number;
+  waitlist: { status: "waiting" | "offered"; quantity: number; claimToken: string } | null;
+  alertRequested: boolean;
+}
+
+/** Live availability for one ticketed event. */
+export interface EventAvailability {
+  placesLeft: number;
+  /** Someone is waiting, so freed places go to the queue, not the public */
+  queueOpen: boolean;
+}
+
 export interface Instructor {
   id: string;
   studio_id: string;
@@ -145,7 +185,7 @@ export interface Membership {
   created_at: string;
 }
 
-export type CheckoutType = "dropin" | "pack" | "membership" | "waitlist_claim";
+export type CheckoutType = "dropin" | "pack" | "membership" | "waitlist_claim" | "event_ticket";
 
 // Composite types for joined queries
 export interface TimetableSlot {

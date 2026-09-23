@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pass images are read from disk at request time; make sure they ship with the route.
+  outputFileTracingIncludes: {
+    "/api/wallet/apple/[token]": ["./wallet/apple/**/*"],
+  },
   images: {
     remotePatterns: [
       {

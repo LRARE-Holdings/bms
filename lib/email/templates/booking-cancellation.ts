@@ -7,6 +7,9 @@ interface BookingCancellationData {
   time: string;
   creditRefunded: boolean;
   paymentMethod?: string;
+  /** Card refund issued with this cancellation, in pence */
+  refundPence?: number | null;
+  refundFailed?: boolean;
 }
 
 export function bookingCancellationEmail(data: BookingCancellationData) {
@@ -18,7 +21,13 @@ export function bookingCancellationEmail(data: BookingCancellationData) {
         ? "This was your birthday treat \u2014 no refund is applicable."
         : data.paymentMethod === "membership"
         ? "This class was booked with your membership."
-        : "If you paid by card, please contact us regarding refund options.";
+        : data.refundPence && data.refundPence > 0
+          ? `A refund of \u00a3${(data.refundPence / 100).toFixed(2)} has been issued to the card you paid with. It usually takes 5\u201310 working days to appear on your statement.`
+          : data.refundFailed
+            ? "We're arranging a refund to the card you paid with. If you don't see it within a few days, please contact us."
+            : data.paymentMethod === "stripe"
+              ? "Your card payment has already been refunded."
+              : "";
 
   const content = `
     <h2 style="margin:0 0 8px;font-size:20px;font-weight:600;color:${BRAND.cocoa};">Booking cancelled</h2>

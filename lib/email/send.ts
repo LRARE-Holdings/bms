@@ -216,6 +216,8 @@ export async function sendBookingCancellation({
   date,
   creditRefunded,
   paymentMethod,
+  refundPence = null,
+  refundFailed = false,
 }: {
   profileId: string;
   studioId: string;
@@ -223,6 +225,9 @@ export async function sendBookingCancellation({
   date: string;
   creditRefunded: boolean;
   paymentMethod?: string;
+  /** Card refund issued for this cancellation, in pence */
+  refundPence?: number | null;
+  refundFailed?: boolean;
 }) {
   try {
     const [config, profile, details] = await Promise.all([
@@ -240,6 +245,8 @@ export async function sendBookingCancellation({
       time: details.time,
       creditRefunded,
       paymentMethod,
+      refundPence,
+      refundFailed,
     });
 
     const { error } = await getResend().emails.send({
