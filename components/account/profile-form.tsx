@@ -20,6 +20,9 @@ export default function ProfileForm({
 }) {
   const [fullName, setFullName] = useState(initialName);
   const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+  // The database only lets a member set their date of birth once — it decides
+  // when the birthday treat arrives — so once set it is shown, not edited.
+  const dateOfBirthLocked = !!initialDateOfBirth;
   const [phone, setPhone] = useState(initialPhone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +77,7 @@ export default function ProfileForm({
       .from("profiles")
       .update({
         full_name: trimmed,
-        ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
+        ...(dateOfBirth && !dateOfBirthLocked ? { date_of_birth: dateOfBirth } : {}),
         phone: trimmedPhone ? toE164UK(trimmedPhone) : null,
       })
       .eq("id", user.id);
@@ -131,10 +134,13 @@ export default function ProfileForm({
           value={dateOfBirth}
           onChange={(e) => setDateOfBirth(e.target.value)}
           max={localDateStr()}
-          className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors"
+          disabled={dateOfBirthLocked}
+          className="w-full px-4 py-2.5 bg-cream border border-sand rounded-xl text-[0.88rem] text-cocoa focus:outline-none focus:border-gold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         />
         <p className="text-[0.68rem] text-warm-grey mt-1">
-          We&apos;ll send you a free class on your birthday each year.
+          {dateOfBirthLocked
+            ? "Contact us if your date of birth needs correcting."
+            : "We'll send you a free class on your birthday each year. You can only set this once."}
         </p>
       </div>
 
