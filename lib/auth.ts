@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioId } from "@/lib/studio-context";
@@ -5,20 +6,19 @@ import type { UserRole } from "@/lib/types";
 
 export { getStudioId };
 
-export async function getUser() {
+/** The signed-in user, looked up once per request however many components ask. */
+export const getUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 export async function getUserRole(): Promise<UserRole | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
+  const supabase = await createClient();
 
   const studioId = await getStudioId();
   const { data } = await supabase

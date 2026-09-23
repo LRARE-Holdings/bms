@@ -19,7 +19,7 @@ export async function POST() {
 
   const { data: existing } = await adminClient
     .from("studio_memberships")
-    .select("id")
+    .select("id, role")
     .eq("profile_id", user.id)
     .eq("studio_id", studioId)
     .single();
@@ -47,5 +47,6 @@ export async function POST() {
     await sendWelcomeEmail({ profileId: user.id, studioId });
   }
 
-  return NextResponse.json({ ok: true });
+  // The login form routes by role, so it doesn't have to look it up again.
+  return NextResponse.json({ ok: true, role: existing?.role ?? "member" });
 }

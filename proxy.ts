@@ -108,7 +108,10 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  // One call both refreshes the session cookie and tells us who this is.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // ── 4. Protected route checks ─────────────────────────────────────
   const isAccountRoute = pathname.startsWith("/account");
@@ -118,28 +121,6 @@ export async function proxy(request: NextRequest) {
   if (!isAccountRoute && !isStaffRoute && !isDashboardRoute) {
     return supabaseResponse;
   }
-
-  // Create a Supabase client scoped to this request for auth checks
-  const authClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return nextRequest.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
 
   // Not authenticated — redirect to login
   if (!user) {
@@ -151,7 +132,7 @@ export async function proxy(request: NextRequest) {
 
   // For staff/dashboard routes, check role
   if (isStaffRoute || isDashboardRoute) {
-    const { data: membership } = await authClient
+    const { data: membership } = await supabase
       .from("studio_memberships")
       .select("role")
       .eq("profile_id", user.id)
