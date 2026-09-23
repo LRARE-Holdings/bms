@@ -1,4 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  SCHEDULE_RULE_COLUMNS,
+  normaliseRule,
+  slotRunsOn,
+  isSlotInHoliday,
+  type HolidayWindow,
+} from "@/lib/schedule-rules";
 
 const BOOKING_CUTOFF_MINS = 30;
 const DEFAULT_MAX_CAPACITY = 10;
@@ -40,6 +47,9 @@ export async function getClassCapacity(
 /**
  * Validate that the booking date falls on the correct day of week for the schedule slot.
  * day_of_week uses 0=Monday schema.
+ *
+ * @deprecated Weekday alone is not enough — it lets a fortnightly or monthly
+ * class be booked on a week it does not run. Use `slotIsBookableOn`.
  */
 export function validateBookingDay(
   scheduleDayOfWeek: number,
@@ -87,12 +97,18 @@ export function isBookingClosed(startTime: string, date: string): boolean {
 /**
  * Check if a class instance is skipped (has a schedule_exception) or falls
  * within a studio holiday. Returns true if the class should not be bookable.
+ *
+ * `slotStartTime` decides whether a *partial-day* holiday covers this class.
+ * Without it every holiday was treated as a full-day closure, so a two-hour
+ * closure blocked the whole day here while forma-admin only cancelled the
+ * classes starting inside the window.
  */
 export async function isClassSkipped(
   supabase: ReturnType<typeof createAdminClient>,
   studioId: string,
   scheduleId: string,
-  date: string
+  date: string,
+  slotStartTime: string
 ): Promise<boolean> {
   const [{ data: exception }, { data: holidays }] = await Promise.all([
     supabase
@@ -104,14 +120,42 @@ export async function isClassSkipped(
       .maybeSingle(),
     supabase
       .from("studio_holidays")
-      .select("id")
+      .select("start_date, end_date, start_time, end_time")
       .eq("studio_id", studioId)
       .lte("start_date", date)
-      .gte("end_date", date)
-      .limit(1),
+      .gte("end_date", date),
   ]);
 
-  return !!exception || (holidays != null && holidays.length > 0);
+  if (exception) return true;
+  return isSlotInHoliday(
+    (holidays ?? []) as HolidayWindow[],
+    date,
+    slotStartTime
+  );
+}
+
+/**
+ * The columns every booking route must select from `schedule` so the recurrence
+ * check below has what it needs.
+ */
+export const BOOKABLE_SLOT_COLUMNS = `start_time, class_id, day_of_week, schedule_rules(${SCHEDULE_RULE_COLUMNS})`;
+
+/**
+ * Does this slot actually run on this date?
+ *
+ * Replaces the old `validateBookingDay`, which compared weekday only. A
+ * fortnightly or monthly class passed that check on every one of its weekdays,
+ * so the site accepted — and charged for — bookings on dates the class does not
+ * run. It also accepted bookings against a rule that had been paused.
+ */
+export function slotIsBookableOn(
+  slot: { day_of_week: number; schedule_rules?: unknown },
+  date: string
+): boolean {
+  return slotRunsOn(
+    { day_of_week: slot.day_of_week, rule: normaliseRule(slot.schedule_rules) },
+    date
+  );
 }
 
 /**
