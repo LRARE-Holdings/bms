@@ -286,7 +286,10 @@ export default async function HomePage() {
             Events at the studio
           </h2>
           <p className="text-[0.92rem] text-warm-grey leading-relaxed max-w-lg mb-10">
-            Workshops, socials and special sessions happening at Burn.
+            Workshops, socials and special sessions happening at Burn.{" "}
+            <Link href="/events" className="font-semibold text-gold hover:text-cocoa underline underline-offset-2">
+              See all events
+            </Link>
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {events.map((event, i) => (

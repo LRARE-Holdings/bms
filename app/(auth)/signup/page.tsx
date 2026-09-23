@@ -2,12 +2,18 @@ import SignupForm from "@/components/auth/signup-form";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioId } from "@/lib/studio-context";
+import { safeNextPath } from "@/lib/site-url";
 
 export const metadata = {
   title: "Sign Up | Burn Mat Studio",
 };
 
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const next = safeNextPath((await searchParams).next);
   const supabase = await createClient();
   const studioId = await getStudioId();
 
@@ -80,7 +86,7 @@ export default async function SignupPage() {
             Join Burn Mat Studio and start booking classes today.
           </p>
 
-          <SignupForm />
+          <SignupForm next={next} />
         </div>
       </div>
     </section>

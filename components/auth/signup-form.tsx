@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { localDateStr } from "@/lib/date-utils";
 import { isValidUKPhone, toE164UK } from "@/lib/phone-utils";
 
-export default function SignupForm() {
+export default function SignupForm({ next = "/account" }: { next?: string }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,7 +81,7 @@ export default function SignupForm() {
     // If auto-confirmed (e.g. in dev), create membership via API and redirect
     if (data.user && data.session) {
       await fetch("/api/auth/ensure-membership", { method: "POST" });
-      router.push("/account");
+      router.push(next);
       router.refresh();
     }
 
@@ -106,7 +106,7 @@ export default function SignupForm() {
           Click the link to activate your account and start booking.
         </p>
         <Link
-          href="/login"
+          href={`/login${next === "/account" ? "" : `?next=${encodeURIComponent(next)}`}`}
           className="inline-block mt-6 text-[0.78rem] font-semibold text-gold hover:text-cocoa transition-colors"
         >
           Back to login
@@ -293,7 +293,7 @@ export default function SignupForm() {
       <p className="text-center text-[0.82rem] text-warm-grey">
         Already have an account?{" "}
         <Link
-          href="/login"
+          href={`/login${next === "/account" ? "" : `?next=${encodeURIComponent(next)}`}`}
           className="font-semibold text-gold hover:text-cocoa transition-colors"
         >
           Log in
