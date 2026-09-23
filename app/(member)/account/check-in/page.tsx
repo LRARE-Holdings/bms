@@ -4,6 +4,8 @@ import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, getStudioId } from "@/lib/auth";
 import AccountHeader from "@/components/account/account-header";
+import { appleWalletConfigured } from "@/lib/wallet/apple";
+import { googleWalletConfigured } from "@/lib/wallet/google";
 
 export const metadata = {
   title: "Check-in Code | Burn Mat Studio",
@@ -15,7 +17,8 @@ export const metadata = {
  *
  * The code is "forma-member:<checkin_token>" — a random token on their studio
  * membership, never their profile id. The QR is drawn here on the server so it
- * appears instantly, even on a weak connection at the door.
+ * appears instantly, even on a weak connection at the door. The wallet buttons
+ * put the same code in Apple/Google Wallet, so it's there without signing in.
  */
 export default async function CheckInCodePage() {
   const user = await requireAuth();
@@ -42,6 +45,9 @@ export default async function CheckInCodePage() {
       })
     : null;
 
+  const showApple = appleWalletConfigured();
+  const showGoogle = googleWalletConfigured();
+
   return (
     <section className="py-10 px-5 md:px-10 max-w-[520px]">
       <AccountHeader
@@ -64,6 +70,30 @@ export default async function CheckInCodePage() {
           <p className="mt-1 text-[0.78rem] text-warm-grey">
             Works for every class you book. Turn your screen brightness up if it won&apos;t scan.
           </p>
+          {(showApple || showGoogle) && (
+            <div className="mt-6 flex flex-col gap-2.5 border-t border-sand pt-6 sm:flex-row sm:justify-center">
+              {showApple && (
+                // A full request, not a page: the route returns a pass file or redirects to Google.
+                // eslint-disable-next-line @next/next/no-html-link-for-pages
+                <a
+                  href="/api/wallet/apple/member"
+                  className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-[0.85rem] font-medium text-white transition-opacity hover:opacity-85"
+                >
+                  Add to Apple Wallet
+                </a>
+              )}
+              {showGoogle && (
+                // A full request, not a page: the route returns a pass file or redirects to Google.
+                // eslint-disable-next-line @next/next/no-html-link-for-pages
+                <a
+                  href="/api/wallet/google/member"
+                  className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-[0.85rem] font-medium text-white transition-opacity hover:opacity-85"
+                >
+                  Add to Google Wallet
+                </a>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white border border-sand rounded-2xl p-8 text-center">
