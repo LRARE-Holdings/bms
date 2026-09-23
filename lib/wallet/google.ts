@@ -1,8 +1,10 @@
 import { createSign } from "node:crypto";
 import { ticketBarcode, ticketReference, type WalletTicket } from "@/lib/wallet/ticket";
+import { memberCardBarcode, type WalletMemberCard } from "@/lib/wallet/member-card";
 
 /**
- * Google Wallet "Save to Google Wallet" links for event tickets.
+ * Google Wallet "Save to Google Wallet" links: event tickets, and the member
+ * check-in card.
  *
  * The event (a class) and the ticket (an object) travel inside a JWT signed
  * with the Google Wallet service account's key, so nothing has to be created
@@ -82,14 +84,60 @@ export function buildGoogleSaveUrl(ticket: WalletTicket): string {
     },
   };
 
+  return signSaveUrl(ticket.publicBaseUrl, {
+    eventTicketClasses: [eventClass],
+    eventTicketObjects: [ticketObject],
+  });
+}
+
+/**
+ * The member's check-in card, as a Google Wallet generic pass. Its object id
+ * is the check-in token, so saving it again updates the card already there.
+ */
+export function buildGoogleMemberSaveUrl(card: WalletMemberCard): string {
+  const issuer = process.env.GOOGLE_WALLET_ISSUER_ID!;
+  const classId = `${issuer}.member-card-${card.studioId}`;
+
+  const memberObject = {
+    id: `${issuer}.member-${card.checkinToken}`,
+    classId,
+    state: "ACTIVE",
+    cardTitle: localised(card.studioName),
+    subheader: localised("Member"),
+    header: localised(card.holderName),
+    hexBackgroundColor: "#473728",
+    logo: {
+      sourceUri: { uri: `${card.publicBaseUrl}/Logo_Beige.png` },
+      contentDescription: localised(card.studioName),
+    },
+    barcode: { type: "QR_CODE", value: memberCardBarcode(card) },
+    textModulesData: [
+      {
+        id: "how",
+        header: "Checking in",
+        body: "Show this code to your instructor when you arrive and they'll tick you in for the class you've booked.",
+      },
+    ],
+    linksModuleData: {
+      uris: [{ id: "bookings", uri: `${card.publicBaseUrl}/account`, description: "Your bookings" }],
+    },
+  };
+
+  return signSaveUrl(card.publicBaseUrl, {
+    genericClasses: [{ id: classId }],
+    genericObjects: [memberObject],
+  });
+}
+
+function signSaveUrl(origin: string, payload: Record<string, unknown>): string {
   const header = { alg: "RS256", typ: "JWT" };
   const claims = {
     iss: process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL,
     aud: "google",
     typ: "savetowallet",
     iat: Math.floor(Date.now() / 1000),
-    origins: [ticket.publicBaseUrl],
-    payload: { eventTicketClasses: [eventClass], eventTicketObjects: [ticketObject] },
+    origins: [origin],
+    payload,
   };
 
   const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claims))}`;
