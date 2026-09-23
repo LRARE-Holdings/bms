@@ -6,6 +6,7 @@ import { getStudioId } from "@/lib/studio-context";
 import { hasStartedUK } from "@/lib/date-utils";
 import { getStudioStripeAccount } from "@/lib/stripe";
 import { refundMemberPayment } from "@/lib/refunds";
+import { offerEventWaitlist } from "@/lib/event-waitlist-offer";
 
 const schema = z.object({ ticket_id: z.string().uuid() });
 
@@ -13,9 +14,9 @@ const schema = z.object({ ticket_id: z.string().uuid() });
  * POST /api/events/tickets/cancel
  *
  * A member cancels their own tickets. Same terms as a class: allowed any time
- * before it starts, refunded in full to the card, and the places go back (to
- * the waitlist first, on the event job's next tick). forma-admin's
- * `charge.refunded` webhook emails the refund confirmation.
+ * before it starts, refunded in full to the card, and the places go straight to
+ * the waitlist if anyone is queueing. forma-admin's `charge.refunded` webhook
+ * emails the refund confirmation.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: ticket } = await admin
     .from("event_tickets")
-    .select("id, profile_id, status, stripe_payment_intent_id, refunded_at, events:event_id(event_date, start_time)")
+    .select("id, event_id, profile_id, status, stripe_payment_intent_id, refunded_at, events:event_id(event_date, start_time)")
     .eq("id", parsed.data.ticket_id)
     .eq("studio_id", await getStudioId())
     .single();
@@ -92,6 +93,9 @@ export async function POST(request: NextRequest) {
       console.error(`[events/tickets/cancel] Refund FAILED for ticket ${ticket.id}: ${refund.reason}. REFUND BY HAND.`);
     }
   }
+
+  // Awaited so the call survives serverless teardown; it never throws.
+  await offerEventWaitlist({ studioId: await getStudioId(), eventId: ticket.event_id });
 
   return NextResponse.json({ success: true, refundPence, refundFailed });
 }

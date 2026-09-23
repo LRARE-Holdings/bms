@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStudioId } from "@/lib/studio-context";
+import { offerEventWaitlist } from "@/lib/event-waitlist-offer";
 
 const joinSchema = z.object({
   event_id: z.string().uuid(),
@@ -70,15 +71,21 @@ export async function DELETE(request: NextRequest) {
   const parsed = leaveSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-  // Leaving while holding an offer releases it; the next person is offered it
-  // on the job's next tick.
-  await createAdminClient()
+  const studioId = await getStudioId();
+  const { data: left } = await createAdminClient()
     .from("event_waitlist")
     .update({ status: "removed" })
     .eq("event_id", parsed.data.event_id)
     .eq("profile_id", user.id)
-    .eq("studio_id", await getStudioId())
-    .in("status", ["waiting", "offered"]);
+    .eq("studio_id", studioId)
+    .in("status", ["waiting", "offered"])
+    .select("status");
+
+  // Turning down an offer releases the places it was holding: pass them on now.
+  // Harmless if they were only waiting — nothing is freed, so nothing is offered.
+  if (left && left.length > 0) {
+    await offerEventWaitlist({ studioId, eventId: parsed.data.event_id });
+  }
 
   return NextResponse.json({ success: true });
 }
