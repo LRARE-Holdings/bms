@@ -35,15 +35,35 @@ export async function GET(request: NextRequest) {
   let errors = 0;
 
   for (const studio of studios) {
-    // Find members at this studio whose birthday month+day matches the target date.
-    // Filter by date_of_birth suffix (e.g. "-04-01") in the query to avoid fetching all members.
-    const { data: members, error: membersError } = await supabase
-      .from("studio_memberships")
-      .select("profile_id, profiles!inner(id, date_of_birth, email, full_name)")
-      .eq("studio_id", studio.id)
-      .like("profiles.date_of_birth::text", `%${mmdd}`);
+    // Members at this studio whose birthday (month + day) is the target date.
+    //
+    // This used to filter with `.like("profiles.date_of_birth::text", …)`, but
+    // PostgREST ignores the cast inside a filter on an embedded table, so the
+    // database was asked to LIKE a date and refused. Every run errored for
+    // every studio, and no birthday email was ever sent. Matching in code over
+    // members who have a date of birth is plain and cheap; pages of 1,000.
+    const members: { profiles: unknown }[] = [];
+    let membersError: unknown = null;
+    for (let from = 0; ; from += 1000) {
+      const { data: page, error: pageError } = await supabase
+        .from("studio_memberships")
+        .select("profile_id, profiles!inner(id, date_of_birth, email, full_name)")
+        .eq("studio_id", studio.id)
+        .not("profiles.date_of_birth", "is", null)
+        .order("profile_id")
+        .range(from, from + 999);
+      if (pageError) {
+        membersError = pageError;
+        break;
+      }
+      for (const row of page ?? []) {
+        const dob = (row.profiles as { date_of_birth?: string | null } | null)?.date_of_birth;
+        if (dob && dob.endsWith(mmdd)) members.push(row);
+      }
+      if (!page || page.length < 1000) break;
+    }
 
-    if (membersError || !members) {
+    if (membersError) {
       console.error(`Failed to fetch members for studio ${studio.id}:`, membersError);
       errors++;
       continue;
