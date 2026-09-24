@@ -11,9 +11,15 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Calculate the target date: 3 days from now
-  const targetDate = new Date();
-  targetDate.setDate(targetDate.getDate() + 3);
+  // Calculate the target date: 3 days from now. `?date=YYYY-MM-DD` runs it for
+  // one specific birthday instead — for catching up after missed runs. Same
+  // secret, and the per-year token still stops anyone getting a second email.
+  const dateParam = request.nextUrl.searchParams.get("date");
+  if (dateParam && !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    return NextResponse.json({ error: "date must be YYYY-MM-DD" }, { status: 400 });
+  }
+  const targetDate = dateParam ? new Date(`${dateParam}T12:00:00Z`) : new Date();
+  if (!dateParam) targetDate.setDate(targetDate.getDate() + 3);
   const targetMonth = targetDate.getMonth() + 1; // 1-based
   const targetDay = targetDate.getDate();
   const currentYear = targetDate.getFullYear();
